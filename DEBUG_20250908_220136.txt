@@ -1,3 +1,8 @@
+--- Debug Log Started: 2025-09-08 22:01:36.712922 ---
+
+[22:01:36] Debug log opened: DEBUG_20250908_220136.txt
+[22:01:36]
+--- Debug: Full GAME_DATA Contents ---
 {
   "adjectives": [
     "dusty",
@@ -741,7 +746,7 @@
     "The air is thick with the biting scent of ozone and singed rock, a clear indicator of powerful, recently discharged arcane energies that still crackle faintly in the atmosphere.",
     "Veins of shimmering, impossibly smooth crystal run through the rough stone walls, catching the light and refracting it into fleeting, rainbow motes that dance across the chamber.",
     "A chilling, unseen draft whips through the room with a sudden, icy touch, carrying the faint, unsettling whisper of ancient, disembodied voices on its unseen currents.",
-    "A collection of discarded adventurers' gear—a broken shield, a snapped sword, a torn cloak—lies scattered in a desperate heap, painting a grim tableau of a sudden, brutal end.",
+    "A collection of discarded adventurers' gear\u2014a broken shield, a snapped sword, a torn cloak\u2014lies scattered in a desperate heap, painting a grim tableau of a sudden, brutal end.",
     "The floor is covered in a fine, gritty layer of pulverized bone, crunching unnervingly underfoot with every step, a chilling reminder of those who met their end here.",
     "A single, ancient goblet, tarnished silver but intricately engraved, rests untouched on a high, unreachable ledge, glinting faintly, a tantalizing mystery of forgotten lore.",
     "The walls are disturbingly slick with a strange, oily residue that glistens ominously in the dim light, leaving a greasy film on anything it touches, and a sense of unnatural sliminess.",
@@ -1144,10 +1149,10 @@
     "backpack": 0.05,
     "shield": 0.15,
     "armor_body": 0.15,
-    "armor_cloak": 0.10,
+    "armor_cloak": 0.1,
     "weapon": 0.15,
     "consumable_healing": 0.25,
-    "consumable_other": 0.10,
+    "consumable_other": 0.1,
     "key": 0.05,
     "default": 0.05
   },
@@ -1912,7 +1917,10 @@
       "name": "Elixir of Strength",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "attack_power", "amount": 2 },
+      "effect_value": {
+        "stat": "attack_power",
+        "amount": 2
+      },
       "description": "A potent elixir that permanently increases your attack power.",
       "shop_price": 250
     },
@@ -1967,7 +1975,7 @@
     {
       "name": "Chronos Crystal",
       "type": "winning_item",
-      "description": "A crystal that subtly distorts time around it, causing a strange déjà vu."
+      "description": "A crystal that subtly distorts time around it, causing a strange d\u00e9j\u00e0 vu."
     },
     {
       "name": "Blade of Infinite Echoes",
@@ -2471,7 +2479,7 @@
         }
       ]
     },
-	{
+    {
       "name": "Elara, the Collector",
       "type": "quest_giver",
       "description": "A sharp-eyed woman with a satchel full of curiosities.",
@@ -3480,7 +3488,10 @@
       "damage_variance": 3,
       "crit_chance": 0.1,
       "crit_multiplier": 1.5,
-      "gold_drop": [ 50, 100 ],
+      "gold_drop": [
+        50,
+        100
+      ],
       "xp_reward": 100,
       "level": 5,
       "item_drop": "Elixir of Strength"
@@ -3493,7 +3504,10 @@
       "damage_variance": 4,
       "crit_chance": 0.05,
       "crit_multiplier": 1.5,
-      "gold_drop": [ 100, 200 ],
+      "gold_drop": [
+        100,
+        200
+      ],
       "xp_reward": 150,
       "level": 8,
       "item_drop": "Amulet of Protection"
@@ -3750,3 +3764,25 @@
     }
   }
 }
+[22:01:36] --- End Debug: Full GAME_DATA Contents ---
+
+[22:01:36]
+--- Debug: Initial Key Data Load Check (Summary) ---
+[22:01:36]     Loaded Key: rusty key | shop_price: 20
+[22:01:36]     Loaded Key: silver key | shop_price: 30
+[22:01:36]     Loaded Key: bone key | shop_price: 10
+[22:01:36] --- End Debug: Initial Key Data Load Check ---
+
+[22:01:36] Loaded 329 adjectives.
+[22:01:36] Loaded 395 room types.
+[22:01:36] Loaded 411 details.
+[22:01:36] Loaded 128 items.
+[22:01:36] Identified 10 winning items.
+[22:01:36] Loaded 38 NPCs.
+[22:01:36] Loaded 32 hazards.
+[22:01:36] Loaded 53 monsters.
+[22:01:36] Loaded 4 puzzles.
+[22:01:36] Loaded 9 quests.
+[22:01:36] Loaded item spawn weights: {"backpack": 0.05, "shield": 0.15, "armor_body": 0.15, "armor_cloak": 0.1, "weapon": 0.15, "consumable_healing": 0.25, "consumable_other": 0.1, "key": 0.05, "default": 0.05}
+[22:01:36]
+--- Debug Log Ended ---

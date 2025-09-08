@@ -142,6 +142,9 @@ WINNING_ITEM_MIN_PLAYER_LEVEL = 5
 # --- DEDICATED VENDOR SPAWN CHANCE ---
 VENDOR_SPAWN_CHANCE = 0.05
 
+# --- SPECIAL EVENT TRACKER ---
+special_event_after_unlock = None
+
 # --- PUZZLE ROOM CONSTANTS ---
 PUZZLE_SPAWN_CHANCE = 0.10
 
@@ -257,9 +260,10 @@ def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max
 def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=False):
     """
     Processes the effect of using a consumable item.
-    Returns updated player_hp, updated max_hp (if changed by item), updated current_max_inventory_slots, and a boolean indicating if a turn was consumed.
+    Returns updated player_hp, updated max_hp (if changed by item), updated current_max_inventory_slots, a boolean indicating if a turn was consumed, and a dictionary of stat changes.
     """
     action_consumed_turn = False
+    stat_changes = {}
 
     item_type = item_to_use.get('type')
 
@@ -287,6 +291,19 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
             print(f"You consume {add_article(item_to_use['name'])}. It tastes... unique. (This takes your turn.)")
             player_inventory.remove(item_to_use)
             action_consumed_turn = True
+        elif effect_type == 'stat_boost':
+            if not in_combat:
+                stat_to_boost = effect_value.get('stat')
+                amount = effect_value.get('amount')
+                if stat_to_boost and isinstance(amount, int):
+                    stat_changes[stat_to_boost] = stat_changes.get(stat_to_boost, 0) + amount
+                    print(f"You consume the {item_to_use['name']} and feel permanently stronger!")
+                    player_inventory.remove(item_to_use)
+                    action_consumed_turn = True
+                else:
+                    print("This item seems to have no effect.")
+            else:
+                print("You can't use this powerful item in the heat of combat.")
         else:
             print(f"You can't use {add_article(item_to_use['name'])} in that way right now.")
     elif item_type == 'backpack':
@@ -309,7 +326,7 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
     else:
         print(f"You can't use {add_article(item_to_use['name'])} in that way.")
 
-    return player_hp, max_hp, current_max_inventory_slots, action_consumed_turn
+    return player_hp, max_hp, current_max_inventory_slots, action_consumed_turn, stat_changes
 
 def display_room_content_summary(current_room, rooms_travelled):
     """
@@ -336,7 +353,7 @@ def display_room_content_summary(current_room, rooms_travelled):
 
 
 # MODIFIED: Added equipped_cloak to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room):
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
@@ -407,6 +424,22 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
                 player_xp += monster_xp_reward
                 print(f"You gained {monster_xp_reward} experience points!")
 
+                item_drop_name = monster_data.get('item_drop')
+                if item_drop_name:
+                    item_def = get_item_by_name(item_drop_name)
+                    if item_def:
+                        if len(player_inventory) < current_max_inventory_slots:
+                            player_inventory.append(item_def)
+                            print(f"The monster dropped {add_article(item_def['name'])}! It has been added to your inventory.")
+                        elif current_room.item is None:
+                            current_room.item = item_def
+                            print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full! It has been placed on the floor.")
+                        else:
+                            print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full and there's already an item on the floor! The dropped item is lost.")
+                    else:
+                        if DEBUG:
+                            debug.debug_print(f"Monster drop item '{item_drop_name}' not found in game data.")
+
                 for q_id, q_data in player_quests.items():
                     quest_def = get_quest_by_id(q_id)
                     if quest_def and q_data['status'] == 'active':
@@ -448,7 +481,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
 
             if item_found_in_inventory:
                 original_player_hp = player_hp
-                player_hp, max_hp, current_max_inventory_slots, consumed_turn = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
+                player_hp, max_hp, current_max_inventory_slots, consumed_turn, _ = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
 
                 if player_hp <= 0:
                     print(f"You succumb to the effects of {add_article(item_found_in_inventory['name'])}...")
@@ -910,6 +943,7 @@ def load_game():
 class Room:
     """Represents a single, randomly generated room in the dungeon."""
     def __init__(self, player_current_level, load_from_save=False):
+        global special_event_after_unlock
         if load_from_save:
             self.description = ""
             self.exits = {}
@@ -923,6 +957,29 @@ class Room:
             self.boss_monster_spawned = False
             self.awaiting_winning_item_pickup = False
             return
+
+        if special_event_after_unlock:
+            monster_name_to_spawn = special_event_after_unlock.get('monster_name')
+            found_monster_def = next((m for m in MONSTERS if m['name'] == monster_name_to_spawn), None)
+
+            if found_monster_def:
+                self.monster = dict(found_monster_def)
+                self.description = f"You enter a chamber that feels strangely significant. A powerful {self.monster['name']} stands guard here."
+                self.exits = {"south": True}  # Default exit to go back
+                self.locked_exits = {}
+                self.item = None
+                self.npc = None
+                self.hazard = None
+                self.puzzle = None
+                self.winning_item_just_spawned = False
+                self.boss_monster_spawned = False
+                self.awaiting_winning_item_pickup = False
+                special_event_after_unlock = None
+                return
+            else:
+                if DEBUG:
+                    debug.debug_print(f"Special monster '{monster_name_to_spawn}' not found. Generating normal room.")
+                special_event_after_unlock = None
 
         adj = random.choice(ADJECTIVES)
         room_type = random.choice(ROOM_TYPES)
@@ -1127,6 +1184,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
     """
+    global special_event_after_unlock
     # Helper function to process puzzle rewards
     def process_puzzle_rewards(puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
         rewards_data = puzzle.get('rewards', {})
@@ -1227,7 +1285,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
         player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain) # Pass keychain, equipped_cloak
+                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room) # Pass keychain, equipped_cloak
         player_gold += gold_gained
         if player_hp <= 0:
             print("\n" + "=" * 40)
@@ -1482,7 +1540,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
                         handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain) # Pass keychain, equipped_cloak
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room) # Pass keychain, equipped_cloak
                     player_gold += gold_gained
                     if player_hp <= 0:
                         print("\n" + "=" * 40)
@@ -1739,7 +1797,12 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
             if item_found_in_inventory:
                 original_player_hp = player_hp
-                player_hp, max_hp, current_max_inventory_slots, consumed_turn = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=False)
+                player_hp, max_hp, current_max_inventory_slots, consumed_turn, stat_changes = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=False)
+
+                if stat_changes:
+                    if 'attack_power' in stat_changes:
+                        player_attack_power += stat_changes['attack_power']
+                        print(f"Your base attack power has permanently increased by {stat_changes['attack_power']}!")
 
                 if player_hp <= 0:
                     print("\n" + "=" * 40)
@@ -1837,7 +1900,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
                     handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                   current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain) # Pass keychain, equipped_cloak
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room) # Pass keychain, equipped_cloak
                 player_gold += gold_gained
                 if player_hp <= 0:
                     print("\n" + "=" * 40)
@@ -2000,6 +2063,12 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     player_keychain.remove(found_key_item) # Keys are typically consumed
                 elif found_key_item in player_inventory: # For keys still in main inventory
                     player_inventory.remove(found_key_item)
+
+                key_type_used = found_key_item.get('key_type')
+                key_unlock_events = GAME_DATA.get('key_unlock_events', {})
+                if key_type_used and key_type_used in key_unlock_events:
+                    special_event_after_unlock = key_unlock_events[key_type_used]
+                    print("You feel a strange presence shift behind the newly unlocked door...")
 
                 current_room.exits[direction_to_unlock] = True
                 del current_room.locked_exits[direction_to_unlock]
