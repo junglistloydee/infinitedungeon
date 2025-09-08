@@ -2454,6 +2454,46 @@
           "dialogue": "You seem too green for my tasks. Perhaps assist the guard first?"
         }
       ]
+    },
+	{
+      "name": "Elara, the Collector",
+      "type": "quest_giver",
+      "description": "A sharp-eyed woman with a satchel full of curiosities.",
+      "dialogues": [
+        "The dungeon has many rare items. I am looking for some of them."
+      ],
+      "current_quest_id": "fetch_item_i",
+      "dialogue_conditions": []
+    },
+    {
+      "name": "Borin, the Archivist",
+      "type": "quest_giver",
+      "description": "A dwarf surrounded by stacks of dusty scrolls and books.",
+      "dialogues": [
+        "The history of this place is written in the items left behind."
+      ],
+      "current_quest_id": "fetch_item_ii",
+      "dialogue_conditions": []
+    },
+    {
+      "name": "Lyra, the Alchemist",
+      "type": "quest_giver",
+      "description": "A mysterious figure brewing a glowing potion.",
+      "dialogues": [
+        "Every ingredient has a purpose. I require some for my work."
+      ],
+      "current_quest_id": "fetch_item_iii",
+      "dialogue_conditions": []
+    },
+    {
+      "name": "Zephyr, the Elder",
+      "type": "quest_giver",
+      "description": "An ancient being who seems to be part of the dungeon itself.",
+      "dialogues": [
+        "The dungeon provides. The dungeon takes. I seek balance."
+      ],
+      "current_quest_id": "fetch_item_iv",
+      "dialogue_conditions": []
     }
   ],
   "hazards": [
@@ -3580,6 +3620,82 @@
       "dialogue_unavailable": "Only the most legendary heroes can take on such a task. Are you truly ready?",
       "required_level": 10,
       "prerequisite_quest": "any_foe_iv",
+      "is_repeatable": false
+    },
+    {
+      "id": "fetch_item_i",
+      "name": "The Collector's Curiosities",
+      "type": "fetch_item",
+      "target_item": "glowing mushroom",
+      "target_count": 5,
+      "reward_gold": 100,
+      "reward_xp": 150,
+      "reward_item": "medium backpack",
+      "giver_npc_name": "Elara, the Collector",
+      "dialogue_offer": "I'm looking for some glowing mushrooms. They're quite beautiful. Bring me 5 and I'll make it worth your while. Type 'accept quest' to start.",
+      "dialogue_active": "You're looking for glowing mushrooms for me. You have {current_count} of {target_count}.",
+      "dialogue_complete_ready": "You've found all the glowing mushrooms! Bring them to me. Type 'turn in The Collector's Curiosities' to get your reward.",
+      "dialogue_complete_turn_in": "Thank you for these beautiful mushrooms! Here is your reward.",
+      "dialogue_unavailable": "I have no other tasks for you right now.",
+      "required_level": 5,
+      "prerequisite_quest": "any_foe_iii",
+      "is_repeatable": false
+    },
+    {
+      "id": "fetch_item_ii",
+      "name": "The Archivist's Lost Pages",
+      "type": "fetch_item",
+      "target_item": "tattered scroll",
+      "target_count": 3,
+      "reward_gold": 250,
+      "reward_xp": 400,
+      "reward_item": "enchanted cloak",
+      "giver_npc_name": "Borin, the Archivist",
+      "dialogue_offer": "I've lost some important scrolls. They're tattered, but priceless to me. Find 3 of them for me. Type 'accept quest' to begin.",
+      "dialogue_active": "You're searching for my lost scrolls. You have {current_count} of {target_count}.",
+      "dialogue_complete_ready": "You've found my scrolls! Please return them. Type 'turn in The Archivist's Lost Pages' to get your reward.",
+      "dialogue_complete_turn_in": "My scrolls! Thank you, adventurer. Here is something for your trouble.",
+      "dialogue_unavailable": "I have no other tasks for you right now.",
+      "required_level": 10,
+      "prerequisite_quest": "fetch_item_i",
+      "is_repeatable": false
+    },
+    {
+      "id": "fetch_item_iii",
+      "name": "The Alchemist's Ingredients",
+      "type": "fetch_item",
+      "target_item": "vial of monster blood",
+      "target_count": 10,
+      "reward_gold": 500,
+      "reward_xp": 1000,
+      "reward_item": "greatsword of shadows",
+      "giver_npc_name": "Lyra, the Alchemist",
+      "dialogue_offer": "I need some... potent ingredients for a new potion. Bring me 10 vials of monster blood. Type 'accept quest' if you're not squeamish.",
+      "dialogue_active": "I'm still waiting for those vials of monster blood. You have {current_count} of {target_count}.",
+      "dialogue_complete_ready": "You have all the monster blood I need! Come, let's trade. Type 'turn in The Alchemist's Ingredients' for your reward.",
+      "dialogue_complete_turn_in": "Excellent! This will do nicely. Here is your reward.",
+      "dialogue_unavailable": "I have no other tasks for you right now.",
+      "required_level": 15,
+      "prerequisite_quest": "fetch_item_ii",
+      "is_repeatable": false
+    },
+    {
+      "id": "fetch_item_iv",
+      "name": "The Elder's Balance",
+      "type": "fetch_item",
+      "target_item": "shard of dark crystal",
+      "target_count": 1,
+      "reward_gold": 1500,
+      "reward_xp": 3000,
+      "reward_item": "Heart of the Mountain",
+      "giver_npc_name": "Zephyr, the Elder",
+      "dialogue_offer": "The dungeon's energy is out of balance. A shard of dark crystal is causing it. Bring it to me, so I may restore harmony. Type 'accept quest' to accept this burden.",
+      "dialogue_active": "The dark crystal's influence grows. You have {current_count} of {target_count}. You must hurry.",
+      "dialogue_complete_ready": "You have the shard of dark crystal! Bring it to me immediately! Type 'turn in The Elder's Balance' to complete your task.",
+      "dialogue_complete_turn_in": "You have done well. The dungeon is grateful. Take this, it is a piece of the dungeon's heart.",
+      "dialogue_unavailable": "I have no other tasks for you right now.",
+      "required_level": 20,
+      "prerequisite_quest": "fetch_item_iii",
       "is_repeatable": false
     }
   ]
