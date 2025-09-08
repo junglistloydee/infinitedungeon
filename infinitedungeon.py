@@ -4,6 +4,7 @@ import json
 import sys
 import os
 import debug # Import debug module
+import copy
 
 # Enable debug (THIS IS THE MASTER SWITCH FOR DEBUGGING)
 DEBUG = True # Set to True to enable debug prints and file logging, False to disable
@@ -429,10 +430,10 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
                     item_def = get_item_by_name(item_drop_name)
                     if item_def:
                         if len(player_inventory) < current_max_inventory_slots:
-                            player_inventory.append(item_def)
+                            player_inventory.append(copy.deepcopy(item_def))
                             print(f"The monster dropped {add_article(item_def['name'])}! It has been added to your inventory.")
                         elif current_room.item is None:
-                            current_room.item = item_def
+                            current_room.item = copy.deepcopy(item_def)
                             print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full! It has been placed on the floor.")
                         else:
                             print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full and there's already an item on the floor! The dropped item is lost.")
@@ -549,6 +550,10 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
                                 display_str += " (EQUIPPED)"
                         elif item_type == 'winning_item':
                             display_str += " (Legendary Artifact!)"
+                        elif item_type == 'equipment':
+                            display_str += f" (Effect: {item_dict.get('effect_type', 'unknown')})"
+                            if item_dict in equipped_misc_items:
+                                display_str += " (EQUIPPED)"
                         elif item_dict.get('description'):
                             display_str += f" ({item_dict['description']})"
                         print(display_str)
@@ -688,7 +693,7 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
                         print(f"That item ({item_to_buy['name']}) is not for sale.")
                     elif player_gold >= item_price:
                         if item_to_buy.get('type') == 'key':
-                            player_keychain.append(item_to_buy)
+                            player_keychain.append(copy.deepcopy(item_to_buy))
                             player_gold -= item_price
                             print(f"You bought {add_article(item_to_buy['name'])} for {item_price} gold! It's added to your keychain.")
                             print(random.choice(shop_dialogues))
@@ -698,7 +703,7 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
                             # --- END NEW DEBUG ---
                         elif len(player_inventory) < current_max_inventory_slots:
                             player_gold -= item_price
-                            player_inventory.append(item_to_buy)
+                            player_inventory.append(copy.deepcopy(item_to_buy))
                             print(f"You bought {add_article(item_to_buy['name'])} for {item_price} gold!")
                             print(random.choice(shop_dialogues))
                         else:
@@ -746,6 +751,8 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
                         display_str += " (EQUIPPED CLOAK)"
                     elif player_shield_value is item_dict:
                         display_str += " (EQUIPPED SHIELD)" # MODIFIED: clarify equipped type
+                    elif item_dict in equipped_misc_items:
+                        display_str += " (EQUIPPED)"
                     elif item_dict.get('type') == 'misc' and item_dict.get('shop_price') is not None:
                         display_str += f" ({item_dict.get('description', '')})"
                     print(f"{display_str} - Sells for {sell_price} Gold")
@@ -782,6 +789,9 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
                     elif player_shield_value is item_to_sell:
                         player_shield_value = None
                         print(f"You unequip your {item_to_sell['name']}.")
+                    elif item_to_sell in equipped_misc_items:
+                        equipped_misc_items.remove(item_to_sell)
+                        print(f"You unequip your {item_to_sell['name']}.")
 
                     player_inventory.remove(item_to_sell)
 
@@ -811,7 +821,7 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
     return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
 
 # MODIFIED: Added equipped_cloak to parameters and save state
-def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain): # Added player_keychain
+def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items): # Added player_keychain
     """Saves the current game state to 'savegame.json'."""
     game_state = {
         'player_hp': player_hp,
@@ -834,6 +844,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
         'player_name': player_name,
         'rooms_travelled': rooms_travelled,
         'player_keychain': player_keychain, # Added to save state
+        'equipped_misc_items': equipped_misc_items,
         'current_room': {
             'description': current_room.description,
             'exits': list(current_room.exits.keys()),
@@ -912,7 +923,12 @@ def load_game():
             equipped_cloak_loaded = equipped_cloak_from_save
 
 
-        return game_state['player_hp'], game_state.get('max_hp', 100), game_state['player_inventory'], loaded_room, \
+        # Deepcopy inventory and keychain to prevent reference issues from save file
+        player_inventory_loaded = [copy.deepcopy(item) for item in game_state['player_inventory']]
+        player_keychain_loaded = [copy.deepcopy(key) for key in game_state.get('player_keychain', [])]
+
+
+        return game_state['player_hp'], game_state.get('max_hp', 100), player_inventory_loaded, loaded_room, \
                game_state['current_max_inventory_slots'], game_state['player_gold'], \
                player_shield_value_loaded, equipped_armor_value_loaded, equipped_cloak_loaded, \
                game_state.get('player_attack_power', BASE_PLAYER_ATTACK_POWER), \
@@ -926,16 +942,17 @@ def load_game():
                game_state.get('player_quests', {}), \
                game_state.get('player_name', 'Adventurer'), \
                game_state.get('rooms_travelled', 0), \
-               game_state.get('player_keychain', []) # Load keychain, default to empty list
+               player_keychain_loaded, \
+               game_state.get('equipped_misc_items', [])
 
     except FileNotFoundError:
         print("\nNo saved game found. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
     except json.JSONDecodeError:
         print("\nError: Corrupted save file. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 
 # --- Classes ---
@@ -1208,7 +1225,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -1240,14 +1257,14 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     if item_def:
                         reward_given = True
                         if item_def.get('type') == 'key':
-                            player_keychain.append(item_def)
+                            player_keychain.append(copy.deepcopy(item_def))
                             print(f"A hidden mechanism whirs, and {add_article(item_def['name'])} appears, added to your keychain!")
                         elif len(player_inventory) < current_max_inventory_slots:
-                            player_inventory.append(item_def)
+                            player_inventory.append(copy.deepcopy(item_def))
                             print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}!")
                         else:
                             print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}, but your inventory is full! It remains here.")
-                            current_room.item = item_def
+                            current_room.item = copy.deepcopy(item_def)
                     else:
                         print(f"Warning: Reward item '{item_name}' not found in game data.")
         
@@ -1339,6 +1356,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
         else:
             player_attack_power = current_base_attack # If no weapon, it's just base attack
 
+        # Apply misc item effects
+        for item in equipped_misc_items:
+            if item.get('effect_type') == 'strength_boost':
+                player_attack_power += item.get('effect_value', 0)
+
 
         command_input = input("> ").lower().strip()
         parts = command_input.split()
@@ -1377,8 +1399,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    drop [item name]              - Drop an item from your inventory or keychain.")
             print("    use [item name]               - Use any consumable from your inventory (e.g., 'use healing potion').")
             print("    equip [item name]             - Equip a weapon, shield, or armor.")
+            print("    unequip [item name]           - Unequip an item.")
             # NEW: Add 'equipped' to general help
             print("    equipped                      - View your currently equipped items.")
+            print("    misc                          - View your currently equipped miscellaneous items.")
             print("    attack                        - Attack a monster in the room.")
             print("    combine                       - Combine items (e.g., 'combine healing potion').")
             print("    talk                          - Attempt to talk to an NPC.")
@@ -1456,6 +1480,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                                 display_str += " (EQUIPPED)"
                         elif item_type == 'winning_item':
                             display_str += " (Legendary Artifact!)"
+                        elif item_type == 'equipment':
+                            display_str += f" (Effect: {item_dict.get('effect_type', 'unknown')})"
+                            if item_dict in equipped_misc_items:
+                                display_str += " (EQUIPPED)"
                         elif item_dict.get('description'):
                             display_str += f" ({item_dict['description']})"
                         print(display_str)
@@ -1492,8 +1520,22 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print(f"Shield: {player_shield_value['name']} (Defense: {player_shield_value.get('defense', '?')})" if player_shield_value else "Shield: None")
             print(f"Body Armor: {equipped_armor_value['name']} (Defense: {equipped_armor_value.get('defense', '?')})" if equipped_armor_value else "Body Armor: None")
             print(f"Cloak: {equipped_cloak['name']} (Defense: {equipped_cloak.get('defense', '?')})" if equipped_cloak else "Cloak: None")
+            if equipped_misc_items:
+                print("Miscellaneous:")
+                for item in equipped_misc_items:
+                    print(f"  - {item['name']}")
             print(f"Total Defense: {(player_shield_value.get('defense', 0) if player_shield_value else 0) + (equipped_armor_value.get('defense', 0) if equipped_armor_value else 0) + (equipped_cloak.get('defense', 0) if equipped_cloak else 0)}")
             print("----------------------------------")
+            continue
+
+        elif verb == "misc":
+            if not equipped_misc_items:
+                print("You have no miscellaneous items equipped.")
+            else:
+                print("\n--- Equipped Miscellaneous Items ---")
+                for item in equipped_misc_items:
+                    print(f"  - {item['name']} (Effect: {item.get('effect_type', 'unknown')})")
+                print("------------------------------------")
             continue
 
         # NEW/MODIFIED: Consolidated 'go' and direct directional commands
@@ -1622,7 +1664,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
                     # Player picks up the winning item
                     print(f"You reach out and grasp {add_article(current_room.item['name'])}! A surge of raw power courses through you.")
-                    player_inventory.append(current_room.item)
+                    player_inventory.append(copy.deepcopy(current_room.item))
                     current_room.item = None # Item is picked up
                     current_room.winning_item_just_spawned = False # No longer just spawned
                     current_room.awaiting_winning_item_pickup = False # No longer awaiting pickup
@@ -1706,7 +1748,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 elif current_room.item.get('type') == 'key':
                     key_just_picked_up = current_room.item # Store a reference to the item
                     print(f"You pick up {add_article(key_just_picked_up['name'])} and attach it to your keychain.")
-                    player_keychain.append(key_just_picked_up) # Add key to keychain
+                    player_keychain.append(copy.deepcopy(key_just_picked_up)) # Add key to keychain
                     current_room.item = None # Item is picked up from the room
                     # --- NEW DEBUG AFTER KEY PICKUP ---
                     if DEBUG: # Wrapped debug calls
@@ -1720,7 +1762,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         continue
 
                     print(f"You pick up {add_article(current_room.item['name'])}.")
-                    player_inventory.append(current_room.item)
+                    player_inventory.append(copy.deepcopy(current_room.item))
 
                     for q_id, q_data in player_quests.items():
                         quest_def = get_quest_by_id(q_id)
@@ -1789,6 +1831,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 elif equipped_cloak is item_found_in_inventory: # NEW: Unequip cloak if dropping
                     equipped_cloak = None
                     print(f"You unequip and drop {add_article(item_found_in_inventory['name'])}. Your cloak defense is now 0.")
+                elif item_found_in_inventory in equipped_misc_items:
+                    equipped_misc_items.remove(item_found_in_inventory)
+                    print(f"You unequip and drop {add_article(item_found_in_inventory['name'])}.")
                 elif player_shield_value is item_found_in_inventory:
                     player_shield_value = None
                     print(f"You unequip and drop {add_article(item_found_in_inventory['name'])}. Your shield defense is now 0.")
@@ -1857,7 +1902,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             # Find the *specific instance* of the item to equip
             for item_dict in player_inventory:
                 if item_dict['name'].lower() == item_to_equip_name_input and \
-                   item_dict.get('type') in ['shield', 'armor', 'weapon']: # Changed 'armor' to check subtypes below
+                   item_dict.get('type') in ['shield', 'armor', 'weapon', 'equipment']: # Changed 'armor' to check subtypes below
                     item_found_in_inventory = item_dict
                     break
 
@@ -1915,8 +1960,59 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         print(f"You equip {add_article(item_found_in_inventory['name'])}. Your attack power is now {player_attack_power}.")
                     else:
                         print(f"You already have {add_article(equipped_weapon['name'] if equipped_weapon else 'your fists')} (Damage: {current_weapon_damage}), which is better than {add_article(item_found_in_inventory['name'])}'s {new_weapon_damage} damage.")
+
+                elif item_type == 'equipment':
+                    if item_found_in_inventory in equipped_misc_items:
+                        print(f"You already have {add_article(item_found_in_inventory['name'])} equipped.")
+                    else:
+                        equipped_misc_items.append(item_found_in_inventory)
+                        print(f"You equip {add_article(item_found_in_inventory['name'])}.")
             else:
                 print(f"You don't have {item_to_equip_name_input} in your inventory, or it's not an equipable item (weapon, shield, or armor).")
+
+        elif verb == "unequip":
+            if len(parts) < 2:
+                print("What do you want to unequip? (e.g., 'unequip wooden sword')")
+                continue
+
+            item_to_unequip_name_input = " ".join(parts[1:])
+
+            item_unequipped = False
+
+            # Check weapon
+            if equipped_weapon and equipped_weapon['name'].lower() == item_to_unequip_name_input:
+                print(f"You unequip your {equipped_weapon['name']}.")
+                equipped_weapon = None
+                item_unequipped = True
+
+            # Check shield
+            elif player_shield_value and player_shield_value['name'].lower() == item_to_unequip_name_input:
+                print(f"You unequip your {player_shield_value['name']}.")
+                player_shield_value = None
+                item_unequipped = True
+
+            # Check body armor
+            elif equipped_armor_value and equipped_armor_value['name'].lower() == item_to_unequip_name_input:
+                print(f"You unequip your {equipped_armor_value['name']}.")
+                equipped_armor_value = None
+                item_unequipped = True
+
+            # Check cloak
+            elif equipped_cloak and equipped_cloak['name'].lower() == item_to_unequip_name_input:
+                print(f"You unequip your {equipped_cloak['name']}.")
+                equipped_cloak = None
+                item_unequipped = True
+
+            else:
+                for item in equipped_misc_items:
+                    if item['name'].lower() == item_to_unequip_name_input:
+                        print(f"You unequip your {item['name']}.")
+                        equipped_misc_items.remove(item)
+                        item_unequipped = True
+                        break
+
+            if not item_unequipped:
+                print(f"You don't have '{item_to_unequip_name_input}' equipped.")
 
         elif verb == "attack":
             # If a winning item just spawned and hasn't been picked up, prevent attacking a non-existent boss
@@ -1999,7 +2095,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_inventory.remove(healing_potions_in_inv[0])
                             player_inventory.remove(healing_potions_in_inv[1])
 
-                            player_inventory.append(large_healing_potion_def)
+                            player_inventory.append(copy.deepcopy(large_healing_potion_def))
                             print(f"You carefully combine two healing potions to create {add_article(large_healing_potion_def['name'])}!")
                             print(f"Your inventory now has {len(player_inventory)}/{current_max_inventory_slots} items.")
                     else:
@@ -2031,7 +2127,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_inventory.remove(large_healing_potions_in_inv[0])
                             player_inventory.remove(large_healing_potions_in_inv[1])
 
-                            player_inventory.append(super_healing_potion_def)
+                            player_inventory.append(copy.deepcopy(super_healing_potion_def))
                             print(f"With meticulous care, you combine two large healing potions to create {add_article(super_healing_potion_def['name'])}!")
                             print(f"Your inventory now has {len(player_inventory)}/{current_max_inventory_slots} items.")
                     else:
@@ -2375,18 +2471,18 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     if reward_item_def:
                         # Decide where to put reward item (keys to keychain, others to inventory)
                         if reward_item_def.get('type') == 'key':
-                            player_keychain.append(reward_item_def)
+                            player_keychain.append(copy.deepcopy(reward_item_def))
                             print(f"You also receive {add_article(reward_item_def['name'])} as a reward, added to your keychain!")
                             # --- NEW DEBUG AFTER QUEST REWARD KEY ---
                             if DEBUG: # Wrapped debug calls
                                 debug.debug_key_acquisition(player_keychain[-1], "quest reward")
                             # --- END NEW DEBUG ---
                         elif len(player_inventory) < current_max_inventory_slots:
-                            player_inventory.append(reward_item_def)
+                            player_inventory.append(copy.deepcopy(reward_item_def))
                             print(f"You also receive {add_article(reward_item_def['name'])} as a reward!")
                         else:
                             print(f"You would receive {add_article(reward_item_def['name'])}, but your inventory is full! It's dropped on the floor.")
-                            current_room.item = reward_item_def
+                            current_room.item = copy.deepcopy(reward_item_def)
                     else:
                         print(f"Warning: Reward item '{reward_item_name}' not found in game data.")
 
@@ -2651,7 +2747,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         elif verb == "save":
             # MODIFIED: Added equipped_cloak to save_game parameters
-            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain) # Pass keychain
+            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items) # Pass keychain
 
         elif verb == "ohvendor":
             guvna_npc_def = next((n for n in NPCs if n.get('name') == 'Stranger' and n.get('type') == 'vendor'), None)
@@ -2710,6 +2806,7 @@ def main():
             player_quests = {}
             player_name = "Adventurer"
             rooms_travelled = 0
+            equipped_misc_items = []
 
             print("=" * 40)
             print("Starting a new adventure...")
@@ -2722,8 +2819,8 @@ def main():
 
             wooden_sword_def = get_item_by_name('wooden sword')
             if wooden_sword_def:
-                player_inventory.append(wooden_sword_def)
-                equipped_weapon = wooden_sword_def
+                player_inventory.append(copy.deepcopy(wooden_sword_def))
+                equipped_weapon = player_inventory[-1]
                 # When starting, set attack power based on equipped weapon + base.
                 # The game_loop will then keep it updated with level progression.
                 player_attack_power = BASE_PLAYER_ATTACK_POWER + wooden_sword_def.get('damage', 0)
@@ -2733,8 +2830,8 @@ def main():
 
             healing_potion_def = get_item_by_name('healing potion')
             if healing_potion_def:
-                player_inventory.append(healing_potion_def)
-                player_inventory.append(healing_potion_def)
+                player_inventory.append(copy.deepcopy(healing_potion_def))
+                player_inventory.append(copy.deepcopy(healing_potion_def))
                 print(f"You also have 2 {healing_potion_def['name']}s.")
 
             print(f"You can carry a maximum of {current_max_inventory_slots} items in your inventory.")
@@ -2744,7 +2841,7 @@ def main():
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak to game_loop parameters
-                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain) # Pass keychain
+                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items) # Pass keychain
 
                 if game_result == 'continue_adventure':
                     # Player chose to continue after main objective.
@@ -2787,18 +2884,19 @@ def main():
                         player_keychain = [] # Reset keychain on 'Try Again'
                         player_quests = {}
                         rooms_travelled = 0 # Reset rooms travelled
+                        equipped_misc_items = []
                         current_room = Room(player_level, player_quests) # New first room
 
                         # Re-add starting items
                         wooden_sword_def = get_item_by_name('wooden sword')
                         if wooden_sword_def:
-                            player_inventory.append(wooden_sword_def)
-                            equipped_weapon = wooden_sword_def
+                            player_inventory.append(copy.deepcopy(wooden_sword_def))
+                            equipped_weapon = player_inventory[-1]
                             player_attack_power = BASE_PLAYER_ATTACK_POWER + wooden_sword_def.get('damage', 0)
                         healing_potion_def = get_item_by_name('healing potion')
                         if healing_potion_def:
-                            player_inventory.append(healing_potion_def)
-                            player_inventory.append(healing_potion_def)
+                            player_inventory.append(copy.deepcopy(healing_potion_def))
+                            player_inventory.append(copy.deepcopy(healing_potion_def))
 
                         print("\n" + "=" * 40)
                         print(f"You pick yourself up, {player_name}, and bravely begin anew!")
@@ -2813,7 +2911,7 @@ def main():
             # Load Game
             loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
             loaded_attack_power, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
-            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain = load_game() # Get loaded_player_keychain and equipped_cloak
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items = load_game() # Get loaded_player_keychain and equipped_cloak
 
             print("=" * 40)
             if loaded_hp is not None:
@@ -2839,6 +2937,7 @@ def main():
                 player_name = loaded_player_name
                 rooms_travelled = loaded_rooms_travelled
                 player_keychain = loaded_player_keychain # Assign loaded keychain
+                equipped_misc_items = loaded_misc_items
 
                 # After loading, re-evaluate quest counts for 'fetch_item' quests to ensure consistency
                 for q_id, q_data in player_quests.items():
@@ -2881,7 +2980,7 @@ def main():
                 # This inner loop also applies to loaded games
                 while True:
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain) # Pass keychain
+                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items) # Pass keychain
 
                     if game_result == 'continue_adventure':
                         current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
