@@ -942,7 +942,7 @@ def load_game():
 
 class Room:
     """Represents a single, randomly generated room in the dungeon."""
-    def __init__(self, player_current_level, load_from_save=False):
+    def __init__(self, player_current_level, player_quests, load_from_save=False):
         global special_event_after_unlock
         if load_from_save:
             self.description = ""
@@ -1033,12 +1033,41 @@ class Room:
             return
 
         # 1.75. Quest Giver NPC Spawn Chance
-        if NPCs and random.random() < 0.15:
-            quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver']
-            if quest_givers:
-                self.npc = dict(random.choice(quest_givers))
+        if NPCs and player_quests is not None and random.random() < 0.15:
+            all_quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver']
+            available_quest_givers = []
+            for npc in all_quest_givers:
+                quest_id = npc.get('current_quest_id')
+                if not quest_id:
+                    continue
+
+                quest_def = get_quest_by_id(quest_id)
+                if not quest_def:
+                    continue
+
+                # Check if quest is already completed or active
+                quest_status = get_player_quest_status(player_quests, quest_id)
+                if quest_status == 'completed' or quest_status == 'active':
+                    continue
+
+                # Check for level requirement
+                if player_current_level < quest_def.get('required_level', 1):
+                    continue
+
+                # Check for prerequisite quest
+                prereq_quest_id = quest_def.get('prerequisite_quest')
+                if prereq_quest_id:
+                    prereq_status = get_player_quest_status(player_quests, prereq_quest_id)
+                    if prereq_status != 'completed':
+                        continue
+
+                # If all checks pass, the quest giver is available
+                available_quest_givers.append(npc)
+
+            if available_quest_givers:
+                self.npc = dict(random.choice(available_quest_givers))
                 self.npc['talked_to'] = False
-            return
+                return
 
         # 2. Winning Item Spawn (level-gated) - Item spawns, boss does NOT, boss spawns on 'get'
         if player_current_level >= WINNING_ITEM_MIN_PLAYER_LEVEL and content_roll < WINNING_ITEM_SPAWN_CHANCE:
@@ -1500,7 +1529,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             if direction in current_room.exits:
                 print(f"You travel {direction}...")
                 time.sleep(1)
-                current_room = Room(player_level) # Generate new room
+                current_room = Room(player_level, player_quests) # Generate new room
                 rooms_travelled += 1
                 display_room_content_summary(current_room, rooms_travelled)
 
@@ -2689,7 +2718,7 @@ def main():
                 player_name = "Adventurer"
             print(f"Welcome, {player_name}, to the Infinite Dungeon!")
 
-            current_room = Room(player_level)
+            current_room = Room(player_level, player_quests)
 
             wooden_sword_def = get_item_by_name('wooden sword')
             if wooden_sword_def:
@@ -2721,7 +2750,7 @@ def main():
                     # Player chose to continue after main objective.
                     # Generate a new room, heal, increment rooms travelled, and continue.
                     player_hp = max_hp # Heal player after a major victory
-                    current_room = Room(player_level) # Generate a new room to continue exploring
+                    current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
                     rooms_travelled += 1
                     print("\nYour adventure in the Infinite Dungeon continues!")
                     display_room_content_summary(current_room, rooms_travelled)
@@ -2758,7 +2787,7 @@ def main():
                         player_keychain = [] # Reset keychain on 'Try Again'
                         player_quests = {}
                         rooms_travelled = 0 # Reset rooms travelled
-                        current_room = Room(player_level) # New first room
+                        current_room = Room(player_level, player_quests) # New first room
 
                         # Re-add starting items
                         wooden_sword_def = get_item_by_name('wooden sword')
@@ -2855,7 +2884,7 @@ def main():
                     game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain) # Pass keychain
 
                     if game_result == 'continue_adventure':
-                        current_room = Room(player_level) # Generate a new room to continue exploring
+                        current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
                         rooms_travelled += 1
                         player_hp = max_hp
                         print("\nYour adventure in the Infinite Dungeon continues!")
