@@ -353,12 +353,95 @@ def display_room_content_summary(current_room, rooms_travelled):
     print("=" * 40)
 
 
-# MODIFIED: Added equipped_cloak to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room):
+def recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items):
+    """Recalculates the player's attack power based on their level and equipment."""
+    current_base_attack = BASE_PLAYER_ATTACK_POWER + (player_level - 1) * ATTACK_GAIN_PER_LEVEL
+    if equipped_weapon:
+        player_attack_power = current_base_attack + equipped_weapon.get('damage', 0)
+    else:
+        player_attack_power = current_base_attack
+
+    for item in equipped_misc_items:
+        if item.get('effect_type') == 'strength_boost':
+            player_attack_power += item.get('effect_value', 0)
+
+    return player_attack_power
+
+# NEW: Dedicated function for equipping items
+def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level):
+    """
+    Handles the logic of equipping an item and returns the updated equipment state.
+    """
+    item_type = item_to_equip.get('type')
+
+    if item_type == 'shield':
+        item_defense = item_to_equip.get('defense', 0)
+        current_shield_defense = player_shield_value.get('defense', 0) if player_shield_value else 0
+        if item_to_equip is player_shield_value:
+            print(f"You already have {add_article(item_to_equip['name'])} equipped.")
+        elif item_defense >= current_shield_defense:
+            player_shield_value = item_to_equip
+            print(f"You equip {add_article(item_to_equip['name'])}. Your **shield defense** is now {player_shield_value.get('defense',0)}.")
+        else:
+            print(f"You already have a shield ({player_shield_value['name']}) providing {current_shield_defense} defense, which is better than {add_article(item_to_equip['name'])}'s {item_defense} defense.")
+
+    elif item_type == 'armor':
+        item_subtype = item_to_equip.get('subtype')
+        if not item_subtype:
+            item_subtype = 'body_armor'
+
+        if item_subtype == 'body_armor':
+            item_defense = item_to_equip.get('defense', 0)
+            current_armor_defense = equipped_armor_value.get('defense', 0) if equipped_armor_value else 0
+            if item_to_equip is equipped_armor_value:
+                print(f"You already have {add_article(item_to_equip['name'])} equipped as body armor.")
+            elif item_defense >= current_armor_defense:
+                equipped_armor_value = item_to_equip
+                print(f"You equip {add_article(item_to_equip['name'])}. Your **body armor defense** is now {equipped_armor_value.get('defense',0)}.")
+            else:
+                print(f"You already have body armor ({equipped_armor_value['name']}) providing {current_armor_defense} defense, which is better than {add_article(item_to_equip['name'])}'s {item_defense} defense.")
+        elif item_subtype == 'cloak':
+            item_defense = item_to_equip.get('defense', 0)
+            current_cloak_defense = equipped_cloak.get('defense', 0) if equipped_cloak else 0
+            if item_to_equip is equipped_cloak:
+                print(f"You already have {add_article(item_to_equip['name'])} equipped as a cloak.")
+            elif item_defense >= current_cloak_defense:
+                equipped_cloak = item_to_equip
+                print(f"You equip {add_article(item_to_equip['name'])}. Your **cloak defense** is now {equipped_cloak.get('defense',0)}.")
+            else:
+                print(f"You already have a cloak ({equipped_cloak['name']}) providing {current_cloak_defense} defense, which is better than {add_article(item_to_equip['name'])}'s {item_defense} defense.")
+        else:
+            print(f"You can't equip {add_article(item_to_equip['name'])} as an armor of unknown subtype.")
+
+    elif item_type == 'weapon':
+        new_weapon_damage = item_to_equip.get('damage', 0)
+        current_weapon_damage = equipped_weapon.get('damage', 0) if equipped_weapon else 0
+
+        if item_to_equip is equipped_weapon:
+            print(f"You already have {add_article(item_to_equip['name'])} equipped.")
+        elif new_weapon_damage >= current_weapon_damage:
+            equipped_weapon = item_to_equip
+            print(f"You equip {add_article(item_to_equip['name'])}.")
+        else:
+            current_weapon_name = equipped_weapon['name'] if equipped_weapon else "your fists"
+            print(f"You already have {add_article(current_weapon_name)} (Damage: {current_weapon_damage}), which is better than {add_article(item_to_equip['name'])}'s {new_weapon_damage} damage.")
+
+    elif item_type == 'equipment':
+        if item_to_equip in equipped_misc_items:
+            print(f"You already have {add_article(item_to_equip['name'])} equipped.")
+        else:
+            equipped_misc_items.append(item_to_equip)
+            print(f"You equip {add_article(item_to_equip['name'])}.")
+
+    return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+
+
+# MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items):
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
-    player_xp, player_level, xp_to_next_level, player_quests.
+    player_xp, player_level, xp_to_next_level, player_quests, and equipped items.
     """
     print("=" * 40)
     monster_name = monster_data['name']
@@ -432,6 +515,14 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
                         if len(player_inventory) < current_max_inventory_slots:
                             player_inventory.append(copy.deepcopy(item_def))
                             print(f"The monster dropped {add_article(item_def['name'])}! It has been added to your inventory.")
+                            # NEW: Quick equip prompt
+                            if item_def.get('type') in ['weapon', 'shield', 'armor', 'equipment']:
+                                quick_equip_choice = input(f"Do you want to quick equip the {item_def['name']}? (yes/no): ").lower().strip()
+                                if quick_equip_choice in ['yes', 'y']:
+                                    player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                                        handle_equip_item(player_inventory[-1], player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level)
+                                    player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items)
+                                    print(f"Your attack power is now {player_attack_power}.")
                         elif current_room.item is None:
                             current_room.item = copy.deepcopy(item_def)
                             print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full! It has been placed on the floor.")
@@ -634,8 +725,8 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
         if player_hp > 0 and monster_current_hp > 0:
             print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}") # FIXED: Used max_hp here
 
-    # MODIFIED: Added equipped_cloak to returned values
-    return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon
+    # MODIFIED: Added equipped_cloak and equipped_misc_items to returned values
+    return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
 # MODIFIED: Added equipped_cloak to parameters
 def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain):
@@ -1328,10 +1419,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     # Handle regular monster combat (if present and not a winning item guardian)
     if current_room.monster and not current_room.monster.get('is_boss_guardian', False): # For regular monsters
         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-        player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
+                player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room) # Pass keychain, equipped_cloak
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
         player_gold += gold_gained
         if player_hp <= 0:
             print("\n" + "=" * 40)
@@ -1347,19 +1438,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 
     while True:
-        # Calculate base attack power from level first
-        current_base_attack = BASE_PLAYER_ATTACK_POWER + (player_level - 1) * ATTACK_GAIN_PER_LEVEL
-
-        # Then, apply weapon damage if a weapon is equipped
-        if equipped_weapon:
-            player_attack_power = current_base_attack + equipped_weapon.get('damage', 0)
-        else:
-            player_attack_power = current_base_attack # If no weapon, it's just base attack
-
-        # Apply misc item effects
-        for item in equipped_misc_items:
-            if item.get('effect_type') == 'strength_boost':
-                player_attack_power += item.get('effect_value', 0)
+        player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items)
 
 
         command_input = input("> ").lower().strip()
@@ -1398,7 +1477,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    get [item name OR 'item']     - Pick up an item (e.g., 'get rusty key' or 'get item').")
             print("    drop [item name]              - Drop an item from your inventory or keychain.")
             print("    use [item name]               - Use any consumable from your inventory (e.g., 'use healing potion').")
-            print("    equip [item name]             - Equip a weapon, shield, or armor.")
+            print("    equip/quip [item name]        - Equip a weapon, shield, or armor.")
             print("    unequip [item name]           - Unequip an item.")
             # NEW: Add 'equipped' to general help
             print("    equipped                      - View your currently equipped items.")
@@ -1608,10 +1687,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 # Handle regular monsters that just spawned (not winning item guardians)
                 elif current_room.monster and not current_room.monster.get('is_boss_guardian', False):
                     player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                    player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
+                    player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                         handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room) # Pass keychain, equipped_cloak
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                     player_gold += gold_gained
                     if player_hp <= 0:
                         print("\n" + "=" * 40)
@@ -1694,10 +1773,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         print(f"A fierce {current_room.monster['name']} manifests, enraged by your theft!")
                         # Immediately initiate combat with the boss
                         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                        player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
+                        player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                             handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain) # Pass keychain, equipped_cloak
+                                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                         player_gold += gold_gained
                         if player_hp <= 0:
                             print("\n" + "=" * 40)
@@ -1892,9 +1971,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             else:
                 print(f"You don't have {item_to_use_name_input} in your inventory.")
 
-        elif verb == "equip":
+        elif verb in ["equip", "quip"]:
             if len(parts) < 2:
-                print("What do you want to equip? (e.g., 'equip wooden sword' or 'equip chainmail')")
+                print("What do you want to equip? (e.g., 'equip wooden sword' or 'quip chainmail')")
                 continue
 
             item_to_equip_name_input = " ".join(parts[1:])
@@ -1902,73 +1981,18 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             # Find the *specific instance* of the item to equip
             for item_dict in player_inventory:
                 if item_dict['name'].lower() == item_to_equip_name_input and \
-                   item_dict.get('type') in ['shield', 'armor', 'weapon', 'equipment']: # Changed 'armor' to check subtypes below
+                   item_dict.get('type') in ['shield', 'armor', 'weapon', 'equipment']:
                     item_found_in_inventory = item_dict
                     break
 
             if item_found_in_inventory:
-                item_type = item_found_in_inventory.get('type')
-
-                if item_type == 'shield':
-                    item_defense = item_found_in_inventory.get('defense', 0)
-                    current_shield_defense = player_shield_value.get('defense', 0) if player_shield_value else 0
-                    if item_found_in_inventory is player_shield_value:
-                        print(f"You already have {add_article(item_found_in_inventory['name'])} equipped.")
-                    elif item_defense >= current_shield_defense:
-                        player_shield_value = item_found_in_inventory # Store the item dict
-                        print(f"You equip {add_article(item_found_in_inventory['name'])}. Your **shield defense** is now {player_shield_value.get('defense',0)}.")
-                    else:
-                        print(f"You already have a shield ({player_shield_value['name']}) providing {current_shield_defense} defense, which is better than {add_article(item_found_in_inventory['name'])}'s {item_defense} defense.")
-
-                elif item_type == 'armor':
-                    item_subtype = item_found_in_inventory.get('subtype')
-                    if not item_subtype: # Handle older armor items without subtype for compatibility
-                        item_subtype = 'body_armor' # Default to body_armor if no subtype specified
-
-                    if item_subtype == 'body_armor':
-                        item_defense = item_found_in_inventory.get('defense', 0)
-                        current_armor_defense = equipped_armor_value.get('defense', 0) if equipped_armor_value else 0
-                        if item_found_in_inventory is equipped_armor_value:
-                            print(f"You already have {add_article(item_found_in_inventory['name'])} equipped as body armor.")
-                        elif item_defense >= current_armor_defense:
-                            equipped_armor_value = item_found_in_inventory # Store the item dict
-                            print(f"You equip {add_article(item_found_in_inventory['name'])}. Your **body armor defense** is now {equipped_armor_value.get('defense',0)}.")
-                        else:
-                            print(f"You already have body armor ({equipped_armor_value['name']}) providing {current_armor_defense} defense, which is better than {add_article(item_found_in_inventory['name'])}'s {item_defense} defense.")
-                    elif item_subtype == 'cloak':
-                        item_defense = item_found_in_inventory.get('defense', 0)
-                        current_cloak_defense = equipped_cloak.get('defense', 0) if equipped_cloak else 0
-                        if item_found_in_inventory is equipped_cloak:
-                            print(f"You already have {add_article(item_found_in_inventory['name'])} equipped as a cloak.")
-                        elif item_defense >= current_cloak_defense:
-                            equipped_cloak = item_found_in_inventory # Store the item dict
-                            print(f"You equip {add_article(item_found_in_inventory['name'])}. Your **cloak defense** is now {equipped_cloak.get('defense',0)}.")
-                        else:
-                            print(f"You already have a cloak ({equipped_cloak['name']}) providing {current_cloak_defense} defense, which is better than {add_article(item_found_in_inventory['name'])}'s {item_defense} defense.")
-                    else:
-                        print(f"You can't equip {add_article(item_found_in_inventory['name'])} as an armor of unknown subtype.")
-
-                elif item_type == 'weapon':
-                    new_weapon_damage = item_found_in_inventory.get('damage', 0)
-                    current_weapon_damage = equipped_weapon.get('damage', BASE_PLAYER_ATTACK_POWER + (player_level - 1) * ATTACK_GAIN_PER_LEVEL) if equipped_weapon else (BASE_PLAYER_ATTACK_POWER + (player_level - 1) * ATTACK_GAIN_PER_LEVEL)
-
-                    if item_found_in_inventory is equipped_weapon:
-                        print(f"You already have {add_article(item_found_in_inventory['name'])} equipped.")
-                    elif new_weapon_damage >= current_weapon_damage:
-                        equipped_weapon = item_found_in_inventory
-                        player_attack_power = new_weapon_damage
-                        print(f"You equip {add_article(item_found_in_inventory['name'])}. Your attack power is now {player_attack_power}.")
-                    else:
-                        print(f"You already have {add_article(equipped_weapon['name'] if equipped_weapon else 'your fists')} (Damage: {current_weapon_damage}), which is better than {add_article(item_found_in_inventory['name'])}'s {new_weapon_damage} damage.")
-
-                elif item_type == 'equipment':
-                    if item_found_in_inventory in equipped_misc_items:
-                        print(f"You already have {add_article(item_found_in_inventory['name'])} equipped.")
-                    else:
-                        equipped_misc_items.append(item_found_in_inventory)
-                        print(f"You equip {add_article(item_found_in_inventory['name'])}.")
+                player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                    handle_equip_item(item_found_in_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level)
+                player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items)
+                print(f"Your attack power is now {player_attack_power}.")
             else:
                 print(f"You don't have {item_to_equip_name_input} in your inventory, or it's not an equipable item (weapon, shield, or armor).")
+
 
         elif verb == "unequip":
             if len(parts) < 2:
@@ -2022,10 +2046,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
             if current_room.monster:
                 player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
+                player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                     handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                   current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room) # Pass keychain, equipped_cloak
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                 player_gold += gold_gained
                 if player_hp <= 0:
                     print("\n" + "=" * 40)
@@ -2557,10 +2581,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             print(fail_penalty['message'])
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
+                            player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain) # Pass keychain, equipped_cloak
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -2637,10 +2661,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             print(fail_penalty['message'])
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon = \
+                            player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain) # Pass keychain, equipped_cloak
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
