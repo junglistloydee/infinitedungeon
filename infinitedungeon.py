@@ -1877,6 +1877,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     if 'attack_power' in stat_changes:
                         player_attack_power += stat_changes['attack_power']
                         print(f"Your base attack power has permanently increased by {stat_changes['attack_power']}!")
+                    elif 'max_hp' in stat_changes:
+                        hp_increase = stat_changes['max_hp']
+                        max_hp += hp_increase
+                        player_hp += hp_increase
+                        print(f"Your maximum HP has permanently increased by {hp_increase}!")
 
                 if player_hp <= 0:
                     print("\n" + "=" * 40)

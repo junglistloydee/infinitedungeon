@@ -1917,6 +1917,22 @@
       "shop_price": 250
     },
     {
+      "name": "Potion of Power",
+      "type": "consumable",
+      "effect_type": "stat_boost",
+      "effect_value": { "stat": "attack_power", "amount": 1 },
+      "description": "A shimmering potion that permanently increases your attack power.",
+      "shop_price": 150
+    },
+    {
+      "name": "Vitality Draught",
+      "type": "consumable",
+      "effect_type": "stat_boost",
+      "effect_value": { "stat": "max_hp", "amount": 10 },
+      "description": "A thick, red liquid that permanently increases your maximum HP.",
+      "shop_price": 200
+    },
+    {
       "name": "Amulet of Protection",
       "type": "armor",
       "subtype": "cloak",
