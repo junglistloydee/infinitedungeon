@@ -5,6 +5,18 @@ import sys
 import os
 import debug # Import debug module
 import copy
+from datetime import datetime
+
+# --- History Log ---
+HISTORY_LOG_FILE = "history_log.txt"
+
+def log_event(message):
+    """Appends a message to the history log file with a timestamp."""
+    try:
+        with open(HISTORY_LOG_FILE, 'a') as f:
+            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+    except IOError as e:
+        print(f"Error writing to history log: {e}")
 
 # Enable debug (THIS IS THE MASTER SWITCH FOR DEBUGGING)
 DEBUG = True # Set to True to enable debug prints and file logging, False to disable
@@ -1652,6 +1664,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 time.sleep(1)
                 current_room = Room(player_level, player_quests) # Generate new room
                 rooms_travelled += 1
+                log_event(f"Player {player_name} entered Room #{rooms_travelled} travelling {direction}. Description: {current_room.description}")
                 display_room_content_summary(current_room, rooms_travelled)
 
                 # Handle immediate hazard upon entering new room
@@ -2843,6 +2856,7 @@ def main():
             if not player_name:
                 player_name = "Adventurer"
             print(f"Welcome, {player_name}, to the Infinite Dungeon!")
+            log_event(f"New game started for player: {player_name}.")
 
             current_room = Room(player_level, player_quests)
 
@@ -2985,6 +2999,7 @@ def main():
 
 
                 print(f"Welcome back, {player_name}!")
+                log_event(f"Game loaded for player: {player_name}.")
                 print(f"Your current health: {player_hp}/{max_hp} HP.")
                 print(f"Your current gold: {player_gold} gold.")
                 print(f"Your Level: {player_level} (XP: {player_xp}/{xp_to_next_level})")
