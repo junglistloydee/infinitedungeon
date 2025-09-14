@@ -926,6 +926,62 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
     # MODIFIED: Added equipped_cloak to returned values
     return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
 
+def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain):
+    """
+    Manages the inn interaction, allowing the player to rest and talk to quest givers.
+    Returns updated player state.
+    """
+    print("\n--- The Hearth and Home Inn ---")
+    print("You find yourself in a cozy, bustling inn. A warm fire crackles in the hearth.")
+
+    while True:
+        print(f"\nYour HP: {player_hp}/{max_hp}")
+        print("Inn commands: rest / talk / leave")
+        inn_command_input = input("Inn Action> ").lower().strip()
+        parts = inn_command_input.split()
+
+        if not parts:
+            continue
+
+        verb = parts[0]
+
+        if verb == "rest":
+            if player_hp < max_hp:
+                player_hp = max_hp
+                print("\nYou rest by the fire, feeling your wounds mend and your spirit lift. You are fully healed.")
+            else:
+                print("\nYou are already at full health and feeling great.")
+
+        elif verb == "talk":
+            quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver']
+            if not quest_givers:
+                print("The inn is quiet today; no one seems to have any quests.")
+                continue
+
+            if len(parts) == 1:
+                print("\nPeople in the inn:")
+                for npc in quest_givers:
+                    print(f"  - {npc['name']}")
+                print("\n(To talk to someone, type 'talk [name]')")
+            else:
+                npc_name_to_talk = " ".join(parts[1:])
+                chosen_npc = next((n for n in quest_givers if n['name'].lower() == npc_name_to_talk.lower()), None)
+                if chosen_npc:
+                    player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
+                        interact_with_quest_giver(chosen_npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                else:
+                    print(f"You don't see anyone named '{npc_name_to_talk}' here.")
+
+        elif verb == "leave":
+            print("You step out of the inn, back into the dungeon's gloom.")
+            return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
+
+        else:
+            print("Invalid inn command. Type 'rest', 'talk', or 'leave'.")
+
+    return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
+
+
 def interact_with_quest_giver(npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain):
     """Handles all interaction logic with a quest-giving NPC."""
     print(f"\nYou approach {npc['name']}.")
@@ -1681,6 +1737,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    look                          - See the room description again.")
             print("    inventory                     - Check your items and inventory space.")
             print("    save                          - Save your current game progress.")
+            print("    ohinn                         - Teleport to a mystical inn.")
             print("    credits                       - Show game credits.")
             print("    quit                          - Exit the game.")
             print("-" * 50)
@@ -2791,6 +2848,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
             else:
                 print("You try to summon the vendor, but he doesn't seem to respond. Perhaps he's not in this realm?")
+
+        elif verb == "ohinn":
+            player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
+                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+            display_room_content_summary(current_room, rooms_travelled, direction_history)
 
         elif verb == "credits":
             print(CREDITS_TEXT)
