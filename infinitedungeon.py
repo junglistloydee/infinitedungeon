@@ -155,6 +155,9 @@ WINNING_ITEM_MIN_PLAYER_LEVEL = 5
 # --- DEDICATED VENDOR SPAWN CHANCE ---
 VENDOR_SPAWN_CHANCE = 0.05
 
+# --- INN SPAWN CHANCE ---
+INN_SPAWN_CHANCE = 0.04
+
 # --- SPECIAL EVENT TRACKER ---
 special_event_after_unlock = None
 
@@ -923,6 +926,64 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
     # MODIFIED: Added equipped_cloak to returned values
     return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
 
+def interact_with_quest_giver(npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain):
+    """Handles all interaction logic with a quest-giving NPC."""
+    print(f"\nYou approach {npc['name']}.")
+    npc_quest_id = npc.get('current_quest_id')
+    if not npc_quest_id:
+        print(f"'{npc.get('dialogues', ['...'])[0]}'")
+        return player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, player_level
+
+    quest_status = get_player_quest_status(player_quests, npc_quest_id)
+    quest_def = get_quest_by_id(npc_quest_id)
+
+    if quest_status == 'not_started' and quest_def:
+        if player_level >= quest_def.get('required_level', 1) and (not quest_def.get('prerequisite_quest') or get_player_quest_status(player_quests, quest_def.get('prerequisite_quest')) == 'completed'):
+            dialogue = quest_def.get('dialogue_offer', "I have a task for you.").format(target_count=quest_def.get('target_count', 0))
+            print(f"{npc['name']}: '{dialogue}'")
+            accept = input("Accept quest? (yes/no): ").lower().strip()
+            if accept in ['yes', 'y']:
+                player_quests[npc_quest_id] = {'status': 'active', 'current_count': 0}
+                print(f"You accept the quest: '{quest_def['name']}'!")
+        else:
+            print(f"{npc['name']}: '{quest_def.get('dialogue_unavailable', 'I have no task for you.')}'")
+    elif quest_status == 'active' and quest_def:
+        dialogue = quest_def.get('dialogue_active', "How goes the quest?").format(current_count=player_quests[npc_quest_id]['current_count'], target_count=quest_def['target_count'])
+        print(f"{npc['name']}: '{dialogue}'")
+    elif quest_status == 'complete_ready' and quest_def:
+        dialogue = quest_def.get('dialogue_complete_ready', "You've done it!").format(current_count=player_quests[npc_quest_id]['current_count'], target_count=quest_def['target_count'])
+        print(f"{npc['name']}: '{dialogue}'")
+        turn_in = input("Turn in quest? (yes/no): ").lower().strip()
+        if turn_in in ['yes', 'y']:
+            if quest_def['type'] == 'fetch_item' and not has_player_enough_items(player_inventory, quest_def['target_item'], quest_def['target_count']):
+                print("You don't have the required items!")
+            else:
+                if quest_def['type'] == 'fetch_item':
+                    remove_items_from_inventory(player_inventory, quest_def['target_item'], quest_def['target_count'])
+                    print(f"You hand over {quest_def['target_count']} {quest_def['target_item']}(s).")
+
+                player_gold += quest_def.get('reward_gold', 0)
+                player_xp += quest_def.get('reward_xp', 0)
+                print(f"Quest complete! You receive {quest_def.get('reward_gold', 0)} gold and {quest_def.get('reward_xp', 0)} XP.")
+
+                reward_item_name = quest_def.get('reward_item')
+                if reward_item_name:
+                    item_def = get_item_by_name(reward_item_name)
+                    if item_def:
+                        if len(player_inventory) < current_max_inventory_slots:
+                            player_inventory.append(copy.deepcopy(item_def))
+                            print(f"You also receive {add_article(item_def['name'])}!")
+                        else:
+                            print(f"You would have received an item, but your inventory is full!")
+
+                player_quests[npc_quest_id]['status'] = 'completed'
+                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+    elif quest_status == 'completed' and quest_def:
+        print(f"{npc['name']}: '{quest_def.get('dialogue_complete_turn_in', 'Thank you for your help.')}'")
+
+    return player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level
+
 # MODIFIED: Added equipped_cloak to parameters and save state
 def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items): # Added player_keychain
     """Saves the current game state to 'savegame.json'."""
@@ -959,7 +1020,8 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
             'puzzle': current_room.puzzle,
             'winning_item_just_spawned': current_room.winning_item_just_spawned, # Save this flag
             'boss_monster_spawned': current_room.boss_monster_spawned, # Save this flag
-            'awaiting_winning_item_pickup': current_room.awaiting_winning_item_pickup # Save this flag
+            'awaiting_winning_item_pickup': current_room.awaiting_winning_item_pickup, # Save this flag
+            'is_inn': getattr(current_room, 'is_inn', False)
         }
     }
     try:
@@ -991,6 +1053,7 @@ def load_game():
         loaded_room.winning_item_just_spawned = game_state['current_room'].get('winning_item_just_spawned', False) # Load flag
         loaded_room.boss_monster_spawned = game_state['current_room'].get('boss_monster_spawned', False) # Load flag
         loaded_room.awaiting_winning_item_pickup = game_state['current_room'].get('awaiting_winning_item_pickup', False) # Load flag
+        loaded_room.is_inn = game_state['current_room'].get('is_inn', False)
 
 
         print("\nGame loaded successfully!")
@@ -1076,7 +1139,10 @@ class Room:
             self.winning_item_just_spawned = False
             self.boss_monster_spawned = False
             self.awaiting_winning_item_pickup = False
+            self.is_inn = False
             return
+
+        self.is_inn = False # Default to not being an inn
 
         if special_event_after_unlock:
             monster_name_to_spawn = special_event_after_unlock.get('monster_name')
@@ -1100,6 +1166,30 @@ class Room:
                 if DEBUG:
                     debug.debug_print(f"Special monster '{monster_name_to_spawn}' not found. Generating normal room.")
                 special_event_after_unlock = None
+
+        # --- Inn Generation ---
+        if random.random() < INN_SPAWN_CHANCE:
+            self.is_inn = True
+            self.description = "You find yourself in a cozy, bustling inn. A warm fire crackles in the hearth, and the air is filled with the murmur of conversations. Several interesting characters are gathered here, offering a moment of respite from the dungeon's dangers."
+            self.exits = {}
+            all_possible_directions = ["north", "south", "east", "west"]
+            guaranteed_unlocked_direction = random.choice(all_possible_directions)
+            self.exits[guaranteed_unlocked_direction] = True
+            available_directions_for_random = [d for d in all_possible_directions if d != guaranteed_unlocked_direction]
+            for direction in available_directions_for_random:
+                if random.random() < 0.5:
+                    self.exits[direction] = True
+
+            self.locked_exits = {}
+            self.item = None
+            self.npc = None
+            self.hazard = None
+            self.monster = None
+            self.puzzle = None
+            self.winning_item_just_spawned = False
+            self.boss_monster_spawned = False
+            self.awaiting_winning_item_pickup = False
+            return # Prevent other content from spawning
 
         adj = random.choice(ADJECTIVES)
         room_type = random.choice(ROOM_TYPES)
@@ -1496,10 +1586,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    misc                          - View your currently equipped miscellaneous items.")
             print("    attack                        - Attack a monster in the room.")
             print("    combine                       - Combine items (e.g., 'combine healing potion').")
-            print("    talk                          - Attempt to talk to an NPC.")
+            print("    talk [person]                 - Attempt to talk to an NPC. In an inn, lists people to talk to.")
+            print("    rest                          - Rest at an inn to restore health.")
             print("    quests                        - View your active quests.")
-            print("    accept quest                  - Accept a quest from the current NPC.")
-            print("    turn in [quest name]          - Turn in a completed quest.")
             print("    answer [your guess]           - Answer a riddle in a puzzle room.")
             print("    pull [lever name/color]       - Interact with a lever in a puzzle room.")
             print("    give [item] to [target]       - Give an item to a statue/NPC in a puzzle room.")
@@ -1665,6 +1754,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room = Room(player_level, player_quests) # Generate new room
                 rooms_travelled += 1
                 log_event(f"Player {player_name} entered Room #{rooms_travelled} travelling {direction}. Description: {current_room.description}")
+
                 display_room_content_summary(current_room, rooms_travelled)
 
                 # Handle immediate hazard upon entering new room
@@ -2249,91 +2339,55 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             if current_room.monster:
                 print(f"You can't talk while the {current_room.monster['name']} is still here!")
                 continue
+
+            if hasattr(current_room, 'is_inn') and current_room.is_inn:
+                quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver']
+                if not quest_givers:
+                    print("The inn is quiet today; no one seems to have any quests.")
+                    continue
+
+                if len(parts) == 1:
+                    print("\nPeople in the inn:")
+                    for npc in quest_givers:
+                        print(f"  - {npc['name']}")
+                    print("\n(To talk to someone, type 'talk [name]')")
+                else:
+                    npc_name_to_talk = " ".join(parts[1:])
+                    chosen_npc = next((n for n in quest_givers if n['name'].lower() == npc_name_to_talk.lower()), None)
+                    if chosen_npc:
+                        player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
+                            interact_with_quest_giver(chosen_npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                    else:
+                        print(f"You don't see anyone named '{npc_name_to_talk}' here.")
+                continue
+
             if current_room.npc:
-                print(f"You approach {current_room.npc['name']}.")
-                npc_dialogue_found = False
-
-                # Check if this NPC is a quest giver and has an active quest
-                npc_quest_id = current_room.npc.get('current_quest_id')
-                if npc_quest_id:
-                    quest_status = get_player_quest_status(player_quests, npc_quest_id)
-                    quest_def = get_quest_by_id(npc_quest_id)
-                    
-                    if quest_status == 'not_started' and quest_def:
-                        # Before offering, check if player meets requirements
-                        if player_level >= quest_def.get('required_level', 1) and \
-                           (not quest_def.get('prerequisite_quest') or \
-                            get_player_quest_status(player_quests, quest_def['prerequisite_quest']) == 'completed'):
-                            dialogue_to_print = quest_def.get('dialogue_offer', "I have a task for you.").format(target_count=quest_def['target_count'])
-                            print(f"{current_room.npc['name']}: '{dialogue_to_print}'")
-                        else:
-                            # Use the special 'unavailable' dialogue if prerequisites aren't met
-                            print(f"{current_room.npc['name']}: '{quest_def.get('dialogue_unavailable', 'I have no task for you.')}'")
-                        npc_dialogue_found = True
-                    
-                    elif quest_status == 'active' and quest_def:
-                        dialogue_to_print = quest_def.get('dialogue_active', "You're still on my quest.").format(
-                            current_count=player_quests[npc_quest_id]['current_count'],
-                            target_count=quest_def['target_count']
-                        )
-                        print(f"{current_room.npc['name']}: '{dialogue_to_print}'")
-                        npc_dialogue_found = True
-                    
-                    elif quest_status == 'complete_ready' and quest_def:
-                        dialogue_to_print = quest_def.get('dialogue_complete_ready', "You've finished my task!").format(
-                            current_count=player_quests[npc_quest_id]['current_count'],
-                            target_count=quest_def['target_count']
-                        )
-                        print(f"{current_room.npc['name']}: '{dialogue_to_print}'")
-                        npc_dialogue_found = True
-                    
-                    elif quest_status == 'completed' and quest_def:
-                        dialogue_to_print = quest_def.get('dialogue_complete_turn_in', "Thank you for your help.").format()
-                        print(f"{current_room.npc['name']}: '{dialogue_to_print}'")
-                        npc_dialogue_found = True
-
-                # If no quest-specific dialogue was found, fall back to generic dialogue or other conditions.
-                if not npc_dialogue_found:
-                    # Check for generic conditional dialogues
-                    if current_room.npc.get('dialogue_conditions'):
-                        for condition in current_room.npc['dialogue_conditions']:
-                            condition_met = False
-                            if condition['condition_type'] == 'player_level_min':
-                                if player_level >= condition['value']:
-                                    condition_met = True
-                            elif condition['condition_type'] == 'has_item':
-                                # This check needs to be more robust for multiple items
-                                if has_player_enough_items(player_inventory, condition['item_name'], condition.get('count', 1)):
-                                    condition_met = True
-                            
-                            # Add more condition types here if needed
-                            
-                            if condition_met:
-                                dialogue_to_print = condition['dialogue'].format(
-                                    player_name=player_name,
-                                    player_level=player_level,
-                                    player_gold=player_gold,
-                                    # Add other format variables as needed
-                                )
-                                print(f"{current_room.npc['name']}: '{dialogue_to_print}'")
-                                npc_dialogue_found = True
-                                break
-
-                    # Final fallback to generic dialogue if no other conditions met
-                    if not npc_dialogue_found and current_room.npc.get('dialogues'):
+                if current_room.npc.get('type') == 'quest_giver':
+                    player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
+                        interact_with_quest_giver(current_room.npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                else:
+                    # Existing non-quest-giver talk logic
+                    print(f"You approach {current_room.npc['name']}.")
+                    if current_room.npc.get('dialogues'):
                         print(f"{current_room.npc['name']}: '{random.choice(current_room.npc['dialogues'])}'")
-                        npc_dialogue_found = True
-                    elif not npc_dialogue_found:
+                    else:
                         print(f"{current_room.npc['name']} stares blankly.")
-
-                current_room.npc['talked_to'] = True
-                if current_room.npc.get('type') == 'vendor':
-                    player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                        handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain)
+                    current_room.npc['talked_to'] = True
+                    if current_room.npc.get('type') == 'vendor':
+                        player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
+                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain)
             else:
                 print("There's no one here to talk to.")
-        # --- END UPDATED `talk` COMMAND BLOCK ---
 
+        elif verb == "rest":
+            if hasattr(current_room, 'is_inn') and current_room.is_inn:
+                if player_hp < max_hp:
+                    player_hp = max_hp
+                    print("\nYou rest by the fire, feeling your wounds mend and your spirit lift. You are fully healed.")
+                else:
+                    print("\nYou are already at full health and feeling great.")
+            else:
+                print("You can only rest at an inn.")
 
         elif verb == "quests":
             if not player_quests:
@@ -2369,176 +2423,6 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 if not has_active_quest:
                     print("You currently have no active quests.")
                 print("------------------------------------")
-
-        elif verb == "accept":
-            if len(parts) < 2 or parts[1] != "quest":
-                print("To accept a quest, type 'accept quest'.")
-                continue
-
-            if current_room.monster:
-                print(f"You can't accept quests while the {current_room.monster['name']} is still here!")
-                continue
-
-            if not current_room.npc or current_room.npc.get('type') != 'quest_giver':
-                print("There's no one here offering quests.")
-                continue
-
-            npc_quest_id = current_room.npc.get('current_quest_id')
-            if not npc_quest_id:
-                print(f"{current_room.npc['name']} has no quest to offer.")
-                continue
-
-            quest_def = get_quest_by_id(npc_quest_id)
-            if not quest_def:
-                print(f"Error: Quest definition for quest ID '{npc_quest_id}' not found in game data.")
-                continue
-
-            # --- Start of the core acceptance logic for a valid quest from a valid NPC ---
-            quest_status = get_player_quest_status(player_quests, npc_quest_id)
-
-            if quest_status == 'not_started':
-                can_accept = True
-                quest_required_level = quest_def.get('required_level', 1) # Get the required level
-
-                if player_level < quest_required_level: # Check player level against quest requirement
-                    print(f"{current_room.npc['name']} says, 'You are not yet strong enough for this task. Come back when you are at least Level {quest_required_level}.'")
-                    can_accept = False
-                elif quest_def.get('prerequisite_quest') and get_player_quest_status(player_quests, quest_def['prerequisite_quest']) != 'completed':
-                    prereq_quest_name = get_quest_by_id(quest_def['prerequisite_quest']).get('name', 'a prerequisite quest')
-                    print(f"{current_room.npc['name']} says, '{quest_def.get('dialogue_unavailable', f'You must complete {prereq_quest_name} first.')}'")
-                    can_accept = False
-
-                if can_accept:
-                    # Initialize current_count based on quest type for new quests
-                    initial_count = 0
-                    if quest_def['type'] == 'fetch_item':
-                        # Check if player already has some of the items needed (check both inv and keychain)
-                        initial_count = sum(1 for item in player_inventory if item['name'].lower() == quest_def['target_item'].lower()) + \
-                                       sum(1 for item in player_keychain if item['name'].lower() == quest_def['target_item'].lower())
-
-                    player_quests[npc_quest_id] = {'status': 'active', 'current_count': initial_count}
-                    print(f"You accept the quest: '{quest_def['name']}'!")
-                    print(f"{current_room.npc['name']}: '{quest_def.get('dialogue_accept', 'Good luck!')}'")
-                    if initial_count > 0:
-                        print(f"Quest Update: You already have {initial_count}/{quest_def['target_count']} {quest_def['target_item']}s.")
-                        if initial_count >= quest_def['target_count']:
-                            print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
-
-                    # FIXED: Added this to update the display immediately after accepting
-                    display_room_content_summary(current_room, rooms_travelled)
-                else:
-                    # If can_accept was False due to level or prerequisite, this message is the fallback.
-                    # The more specific messages are already handled above.
-                    pass # Message already printed by specific checks
-            elif quest_status == 'active':
-                print(f"You have already accepted '{quest_def['name']}' and are still working on it. Come back when you're done!")
-            elif quest_status == 'complete_ready':
-                print(f"You have completed '{quest_def['name']}'! Turn it in to {quest_def['giver_npc_name']} to claim your reward.")
-            elif quest_status == 'completed':
-                print(f"You already completed '{quest_def['name']}'.")
-
-            # --- End of the core acceptance logic ---
-
-        elif verb == "turn":
-            if len(parts) < 3 or parts[1] != "in":
-                print("To turn in a quest, type 'turn in [quest name]'.")
-                continue
-
-            quest_name_input = " ".join(parts[2:]).lower()
-
-            if current_room.monster:
-                print(f"You can't turn in quests while the {current_room.monster['name']} is still here!")
-                continue
-
-            if not current_room.npc or current_room.npc.get('type') != 'quest_giver':
-                print("There's no one here to turn in quests to.")
-                continue
-
-            npc_quest_id = current_room.npc.get('current_quest_id')
-            if not npc_quest_id:
-                print(f"{current_room.npc['name']} isn't looking for anything.")
-                continue
-
-            quest_def = get_quest_by_id(npc_quest_id)
-            if not quest_def or quest_def['name'].lower() != quest_name_input:
-                print(f"You can't turn in '{quest_name_input}' to {current_room.npc['name']}.")
-                if quest_def:
-                    print(f"{current_room.npc['name']} is looking for '{quest_def['name']}'.")
-                continue
-
-            quest_status = get_player_quest_status(player_quests, npc_quest_id)
-
-            if quest_status == 'complete_ready':
-                if quest_def['type'] == 'fetch_item':
-                    # Need to explicitly find and remove the items by reference, not just name, to ensure correct count if player has multiple identical items.
-                    items_to_remove_from_inv = []
-                    current_count_in_inv = 0
-                    # Check main inventory
-                    for item_obj in player_inventory:
-                        if item_obj['name'].lower() == quest_def['target_item'].lower() and current_count_in_inv < quest_def['target_count']:
-                            items_to_remove_from_inv.append(item_obj)
-                            current_count_in_inv += 1
-                    # Check keychain for keys that might be quest items
-                    for item_obj in player_keychain:
-                            if item_obj['name'].lower() == quest_def['target_item'].lower() and current_count_in_inv < quest_def['target_count']:
-                                items_to_remove_from_inv.append(item_obj)
-                                current_count_in_inv += 1
-
-                    if current_count_in_inv < quest_def['target_count']:
-                        print(f"You don't have enough {quest_def['target_item']}s to turn in. Go collect more!")
-                        # Re-update current_count in case some were removed but not enough for turn-in
-                        player_quests[npc_quest_id]['current_count'] = current_count_in_inv
-                        continue
-                    else:
-                        for item_obj in items_to_remove_from_inv:
-                            if item_obj in player_inventory: # Remove from where it was found
-                                player_inventory.remove(item_obj)
-                            elif item_obj in player_keychain:
-                                player_keychain.remove(item_obj)
-                        print(f"You hand over {quest_def['target_count']} {quest_def['target_item']}s.")
-
-                player_gold += quest_def.get('reward_gold', 0)
-                player_xp += quest_def.get('reward_xp', 0)
-
-                print(f"You successfully turn in '{quest_def['name']}' to {current_room.npc['name']}!")
-                print(f"You receive {quest_def.get('reward_gold', 0)} gold and {quest_def.get('reward_xp', 0)} XP!")
-
-                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
-
-
-                reward_item_name = quest_def.get('reward_item')
-                if reward_item_name:
-                    reward_item_def = get_item_by_name(reward_item_name)
-                    if reward_item_def:
-                        # Decide where to put reward item (keys to keychain, others to inventory)
-                        if reward_item_def.get('type') == 'key':
-                            player_keychain.append(copy.deepcopy(reward_item_def))
-                            print(f"You also receive {add_article(reward_item_def['name'])} as a reward, added to your keychain!")
-                            # --- NEW DEBUG AFTER QUEST REWARD KEY ---
-                            if DEBUG: # Wrapped debug calls
-                                debug.debug_key_acquisition(player_keychain[-1], "quest reward")
-                            # --- END NEW DEBUG ---
-                        elif len(player_inventory) < current_max_inventory_slots:
-                            player_inventory.append(copy.deepcopy(reward_item_def))
-                            print(f"You also receive {add_article(reward_item_def['name'])} as a reward!")
-                        else:
-                            print(f"You would receive {add_article(reward_item_def['name'])}, but your inventory is full! It's dropped on the floor.")
-                            current_room.item = copy.deepcopy(reward_item_def)
-                    else:
-                        print(f"Warning: Reward item '{reward_item_name}' not found in game data.")
-
-                player_quests[npc_quest_id]['status'] = 'completed'
-                print(f"{current_room.npc['name']}: '{quest_def.get('dialogue_complete_turn_in', 'Thank you, adventurer!')}'")
-
-            elif quest_status == 'active':
-                print(f"You haven't completed '{quest_def['name']}' yet.")
-            elif quest_status == 'not_started':
-                print(f"You haven't accepted '{quest_def['name']}' from {current_room.npc['name']}.")
-            elif quest_status == 'completed':
-                print(f"You already completed '{quest_def['name']}'.")
-
-            display_room_content_summary(current_room, rooms_travelled)
 
         elif verb == "answer":
             if current_room.monster:
