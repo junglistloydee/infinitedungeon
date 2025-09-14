@@ -1523,6 +1523,26 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.item = copy.deepcopy(item_def)
                     else:
                         print(f"Warning: Reward item '{item_name}' not found in game data.")
+
+        # Handle Old Reward Format
+        elif 'reward_type' in puzzle and 'reward_data' in puzzle:
+            reward_type = puzzle['reward_type']
+            reward_data = puzzle['reward_data']
+            if reward_type == 'item':
+                reward_given = True
+                item_def = get_item_by_name(reward_data)
+                if item_def:
+                    if item_def.get('type') == 'key':
+                        player_keychain.append(copy.deepcopy(item_def))
+                        print(f"A hidden mechanism whirs, and {add_article(item_def['name'])} appears, added to your keychain!")
+                    elif len(player_inventory) < current_max_inventory_slots:
+                        player_inventory.append(copy.deepcopy(item_def))
+                        print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}!")
+                    else:
+                        print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}, but your inventory is full! It remains here.")
+                        current_room.item = copy.deepcopy(item_def)
+                else:
+                    print(f"Warning: Reward item '{reward_data}' not found in game data.")
         
         # Handle Exit Reward as a special case if no other rewards were given
         if not reward_given and 'exit' in rewards_data:
@@ -2526,10 +2546,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room.puzzle['solved'] = True
                 
                 # NEW: Call the new reward handler function
-                if 'rewards' in current_room.puzzle:
-                    player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
-                        current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
-                    )
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+                )
 
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
             else:
@@ -2606,10 +2625,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room.puzzle['solved'] = True
 
                 # NEW: Call the new reward handler function
-                if 'rewards' in current_room.puzzle:
-                    player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
-                        current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
-                    )
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+                )
 
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
             else:
@@ -2738,10 +2756,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room.puzzle['solved'] = True
 
                 # NEW: Call the new reward handler function
-                if 'rewards' in current_room.puzzle:
-                    player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
-                        current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
-                    )
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+                )
 
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
             else:
