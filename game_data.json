@@ -2533,6 +2533,25 @@
       ],
       "current_quest_id": "fetch_item_iv",
       "dialogue_conditions": []
+    },
+    {
+      "name": "sobbing woman",
+      "type": "quest_giver",
+      "description": "A woman in a beautiful dress, sobbing uncontrollably.",
+      "dialogues": [
+        "Oh, woe is me! My wedding is ruined!"
+      ],
+      "current_quest_id": "the_unfit_bridesmaid",
+      "dialogue_conditions": []
+    },
+    {
+      "name": "a man in a dress",
+      "type": "misc",
+      "description": "A man... wearing a bridesmaid's dress. He looks very out of place.",
+      "dialogues": [
+        "Uh... I can explain."
+      ],
+      "requires_quest": "the_unfit_bridesmaid"
     }
   ],
   "hazards": [
@@ -3761,6 +3780,24 @@
       "dialogue_unavailable": "I have no other tasks for you right now.",
       "required_level": 20,
       "prerequisite_quest": "fetch_item_iii",
+      "is_repeatable": false
+    },
+    {
+      "id": "the_unfit_bridesmaid",
+      "name": "The Unfit Bridesmaid",
+      "type": "find_npc",
+      "target_npc_name": "a man in a dress",
+      "reward_gold": 150,
+      "reward_xp": 200,
+      "reward_item": "enchanted cloak",
+      "giver_npc_name": "sobbing woman",
+      "dialogue_offer": "My bridesmaid... she's not fit for the job! Please, can you find the one who is clearly not supposed to be a bridesmaid? I'll reward you handsomely. Type 'accept quest' to help me.",
+      "dialogue_active": "Have you found the... unfit bridesmaid yet? Please hurry!",
+      "dialogue_complete_ready": "You found him! Oh, thank you, thank you! Please, let me reward you. Type 'turn in The Unfit Bridesmaid' to get your reward.",
+      "dialogue_complete_turn_in": "You've saved my wedding! Thank you, brave adventurer.",
+      "dialogue_unavailable": "Thank you again for your help!",
+      "required_level": 1,
+      "prerequisite_quest": null,
       "is_repeatable": false
     }
   ],

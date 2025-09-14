@@ -209,6 +209,9 @@ def get_player_quest_status(player_quests, quest_id):
         if quest_def['type'] in ['fetch_item', 'defeat_any_monster', 'defeat_monster']:
             if quest_data['current_count'] >= quest_def['target_count']:
                 return 'complete_ready'
+        elif quest_def['type'] == 'find_npc':
+            if quest_data.get('found_npc'):
+                return 'complete_ready'
 
     return 'active'
 
@@ -999,15 +1002,30 @@ def interact_with_quest_giver(npc, player_quests, player_level, player_inventory
             print(f"{npc['name']}: '{dialogue}'")
             accept = input("Accept quest? (yes/no): ").lower().strip()
             if accept in ['yes', 'y']:
-                player_quests[npc_quest_id] = {'status': 'active', 'current_count': 0}
+                if quest_def['type'] == 'find_npc':
+                    player_quests[npc_quest_id] = {'status': 'active', 'found_npc': False}
+                else:
+                    player_quests[npc_quest_id] = {'status': 'active', 'current_count': 0}
                 print(f"You accept the quest: '{quest_def['name']}'!")
         else:
             print(f"{npc['name']}: '{quest_def.get('dialogue_unavailable', 'I have no task for you.')}'")
     elif quest_status == 'active' and quest_def:
-        dialogue = quest_def.get('dialogue_active', "How goes the quest?").format(current_count=player_quests[npc_quest_id]['current_count'], target_count=quest_def['target_count'])
+        if quest_def['type'] in ['defeat_any_monster', 'defeat_monster', 'fetch_item']:
+            dialogue = quest_def.get('dialogue_active', "How goes the quest?").format(
+                current_count=player_quests[npc_quest_id].get('current_count', 0),
+                target_count=quest_def.get('target_count', 0)
+            )
+        else:
+            dialogue = quest_def.get('dialogue_active', "How goes the quest?")
         print(f"{npc['name']}: '{dialogue}'")
     elif quest_status == 'complete_ready' and quest_def:
-        dialogue = quest_def.get('dialogue_complete_ready', "You've done it!").format(current_count=player_quests[npc_quest_id]['current_count'], target_count=quest_def['target_count'])
+        if quest_def['type'] in ['defeat_any_monster', 'defeat_monster', 'fetch_item']:
+            dialogue = quest_def.get('dialogue_complete_ready', "You've done it!").format(
+                current_count=player_quests[npc_quest_id].get('current_count', 0),
+                target_count=quest_def.get('target_count', 0)
+            )
+        else:
+            dialogue = quest_def.get('dialogue_complete_ready', "You've done it!")
         print(f"{npc['name']}: '{dialogue}'")
         turn_in = input("Turn in quest? (yes/no): ").lower().strip()
         if turn_in in ['yes', 'y']:
@@ -1458,8 +1476,16 @@ class Room:
 
             elif secondary_content_roll < npc_spawn_threshold:
                 non_quest_npcs = [n for n in NPCs if n.get('type') != 'vendor' and n.get('type') != 'quest_giver']
-                if non_quest_npcs:
-                    self.npc = dict(random.choice(non_quest_npcs))
+
+                # Filter out NPCs that require a quest the player doesn't have
+                eligible_npcs = []
+                for npc in non_quest_npcs:
+                    required_quest = npc.get('requires_quest')
+                    if not required_quest or (required_quest and player_quests.get(required_quest, {}).get('status') == 'active'):
+                        eligible_npcs.append(npc)
+
+                if eligible_npcs:
+                    self.npc = dict(random.choice(eligible_npcs))
                     self.npc['talked_to'] = False
             elif secondary_content_roll < hazard_spawn_threshold:
                 if HAZARDS:
@@ -2533,6 +2559,14 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     else:
                         print(f"{current_room.npc['name']} stares blankly.")
                     current_room.npc['talked_to'] = True
+                    # Check if this NPC is a target for a 'find_npc' quest
+                    for q_id, q_data in player_quests.items():
+                        quest_def = get_quest_by_id(q_id)
+                        if quest_def and q_data['status'] == 'active' and quest_def['type'] == 'find_npc':
+                            if quest_def['target_npc_name'].lower() == current_room.npc['name'].lower():
+                                player_quests[q_id]['found_npc'] = True
+                                print(f"Quest Update: You have found {current_room.npc['name']} for the quest '{quest_def['name']}'!")
+                                print(f"Return to {quest_def['giver_npc_name']} to complete the quest.")
                     if current_room.npc.get('type') == 'vendor':
                         player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
                             handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain)
