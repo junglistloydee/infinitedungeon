@@ -382,6 +382,43 @@ def recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items,
 
     return player_attack_power
 
+
+def scale_item_for_player_level(item, player_level):
+    """
+    Scales an item's stats and name based on the player's level.
+    Returns a new, scaled item dictionary or the original item if not scalable.
+    """
+    if not item or item.get('type') not in ['weapon', 'shield', 'armor']:
+        return item
+
+    bonus = 0
+    if 5 <= player_level <= 7:
+        bonus = 1
+    elif 8 <= player_level <= 10:
+        bonus = 2
+    elif 11 <= player_level <= 13:
+        bonus = 3
+    elif 14 <= player_level <= 16:
+        bonus = 4
+    elif player_level >= 17:
+        bonus = 5
+
+    if bonus > 0:
+        # Create a deep copy to avoid modifying the original item in ALL_ITEMS
+        scaled_item = copy.deepcopy(item)
+        scaled_item['name'] = f"{scaled_item['name']}+{bonus}"
+
+        if 'damage' in scaled_item:
+            scaled_item['damage'] += bonus
+
+        if 'defense' in scaled_item:
+            scaled_item['defense'] += bonus
+
+        return scaled_item
+
+    return item
+
+
 # NEW: Dedicated function for equipping items
 def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level):
     """
@@ -528,19 +565,21 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                     item_def = get_item_by_name(item_drop_name)
                     if item_def:
                         if len(player_inventory) < current_max_inventory_slots:
-                            player_inventory.append(copy.deepcopy(item_def))
-                            print(f"The monster dropped {add_article(item_def['name'])}! It has been added to your inventory.")
+                            scaled_item = scale_item_for_player_level(item_def, player_level)
+                            player_inventory.append(scaled_item)
+                            print(f"The monster dropped {add_article(scaled_item['name'])}! It has been added to your inventory.")
                             # NEW: Quick equip prompt
-                            if item_def.get('type') in ['weapon', 'shield', 'armor', 'equipment']:
-                                quick_equip_choice = input(f"Do you want to quick equip the {item_def['name']}? (yes/no): ").lower().strip()
+                            if scaled_item.get('type') in ['weapon', 'shield', 'armor', 'equipment']:
+                                quick_equip_choice = input(f"Do you want to quick equip the {scaled_item['name']}? (yes/no): ").lower().strip()
                                 if quick_equip_choice in ['yes', 'y']:
                                     player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                         handle_equip_item(player_inventory[-1], player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level)
                                     player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
                                     print(f"Your attack power is now {player_attack_power}.")
                         elif current_room.item is None:
-                            current_room.item = copy.deepcopy(item_def)
-                            print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full! It has been placed on the floor.")
+                            scaled_item = scale_item_for_player_level(item_def, player_level)
+                            current_room.item = scaled_item
+                            print(f"The monster dropped {add_article(scaled_item['name'])}, but your inventory is full! It has been placed on the floor.")
                         else:
                             print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full and there's already an item on the floor! The dropped item is lost.")
                     else:
@@ -744,7 +783,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
 # MODIFIED: Added equipped_cloak to parameters
-def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain):
+def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level):
     """
     Manages the shop interaction with a vendor NPC.
     Returns updated player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon.
@@ -757,7 +796,8 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
     for item_name in shop_stock_names:
         item_def = get_item_by_name(item_name.lower())
         if item_def and item_def.get('shop_price') is not None:
-            shop_items.append(item_def)
+            scaled_item = scale_item_for_player_level(item_def, player_level)
+            shop_items.append(scaled_item)
 
     print(f"\n--- {vendor_name}'s Shop ---")
     print(random.choice(shop_dialogues))
@@ -1454,7 +1494,8 @@ class Room:
                     items_to_choose_from = [item_tuple[0] for item_tuple in possible_items_with_weights]
                     weights_for_choices = [item_tuple[1] for item_tuple in possible_items_with_weights]
 
-                    self.item = random.choices(items_to_choose_from, weights=weights_for_choices, k=1)[0]
+                    chosen_item = random.choices(items_to_choose_from, weights=weights_for_choices, k=1)[0]
+                    self.item = scale_item_for_player_level(chosen_item, player_current_level)
 
             elif secondary_content_roll < npc_spawn_threshold:
                 non_quest_npcs = [n for n in NPCs if n.get('type') != 'vendor' and n.get('type') != 'quest_giver']
@@ -1574,11 +1615,13 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_keychain.append(copy.deepcopy(item_def))
                             print(f"A hidden mechanism whirs, and {add_article(item_def['name'])} appears, added to your keychain!")
                         elif len(player_inventory) < current_max_inventory_slots:
-                            player_inventory.append(copy.deepcopy(item_def))
-                            print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}!")
+                            scaled_item = scale_item_for_player_level(item_def, player_level)
+                            player_inventory.append(scaled_item)
+                            print(f"A hidden compartment opens, revealing {add_article(scaled_item['name'])}!")
                         else:
-                            print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}, but your inventory is full! It remains here.")
-                            current_room.item = copy.deepcopy(item_def)
+                            scaled_item = scale_item_for_player_level(item_def, player_level)
+                            print(f"A hidden compartment opens, revealing {add_article(scaled_item['name'])}, but your inventory is full! It remains here.")
+                            current_room.item = scaled_item
                     else:
                         print(f"Warning: Reward item '{item_name}' not found in game data.")
 
@@ -1594,11 +1637,13 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         player_keychain.append(copy.deepcopy(item_def))
                         print(f"A hidden mechanism whirs, and {add_article(item_def['name'])} appears, added to your keychain!")
                     elif len(player_inventory) < current_max_inventory_slots:
-                        player_inventory.append(copy.deepcopy(item_def))
-                        print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}!")
+                        scaled_item = scale_item_for_player_level(item_def, player_level)
+                        player_inventory.append(scaled_item)
+                        print(f"A hidden compartment opens, revealing {add_article(scaled_item['name'])}!")
                     else:
-                        print(f"A hidden compartment opens, revealing {add_article(item_def['name'])}, but your inventory is full! It remains here.")
-                        current_room.item = copy.deepcopy(item_def)
+                        scaled_item = scale_item_for_player_level(item_def, player_level)
+                        print(f"A hidden compartment opens, revealing {add_article(scaled_item['name'])}, but your inventory is full! It remains here.")
+                        current_room.item = scaled_item
                 else:
                     print(f"Warning: Reward item '{reward_data}' not found in game data.")
         
@@ -2535,7 +2580,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     current_room.npc['talked_to'] = True
                     if current_room.npc.get('type') == 'vendor':
                         player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain)
+                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain, player_level)
             else:
                 print("There's no one here to talk to.")
 
@@ -2842,7 +2887,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("You hear a gruff voice say: 'Heh heh heh... What're ya buyin'?'")
                 # MODIFIED: Added equipped_cloak to handle_shop parameters
                 player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                    handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain) # Pass keychain
+                    handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain, player_level) # Pass keychain
                 print("\n" + "=" * 30)
                 # After returning from handle_shop, display room summary
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
