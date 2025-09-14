@@ -1222,6 +1222,13 @@
       "shop_price": 20
     },
     {
+      "name": "wooden sword",
+      "type": "weapon",
+      "damage": 2,
+      "description": "A simple wooden sword. Better than your fists.",
+      "shop_price": 5
+    },
+    {
       "name": "ornate longsword",
       "type": "weapon",
       "damage": 22,

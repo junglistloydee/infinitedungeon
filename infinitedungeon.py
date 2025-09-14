@@ -368,9 +368,9 @@ def display_room_content_summary(current_room, rooms_travelled, direction_histor
     print("=" * 40)
 
 
-def recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items):
-    """Recalculates the player's attack power based on their level and equipment."""
-    current_base_attack = BASE_PLAYER_ATTACK_POWER + (player_level - 1) * ATTACK_GAIN_PER_LEVEL
+def recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus):
+    """Recalculates the player's attack power based on their level, equipment, and permanent bonuses."""
+    current_base_attack = BASE_PLAYER_ATTACK_POWER + ((player_level - 1) * ATTACK_GAIN_PER_LEVEL) + player_attack_bonus
     if equipped_weapon:
         player_attack_power = current_base_attack + equipped_weapon.get('damage', 0)
     else:
@@ -452,7 +452,7 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items):
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
@@ -536,7 +536,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
                                 if quick_equip_choice in ['yes', 'y']:
                                     player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                         handle_equip_item(player_inventory[-1], player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level)
-                                    player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items)
+                                    player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
                                     print(f"Your attack power is now {player_attack_power}.")
                         elif current_room.item is None:
                             current_room.item = copy.deepcopy(item_def)
@@ -740,8 +740,8 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance
         if player_hp > 0 and monster_current_hp > 0:
             print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}") # FIXED: Used max_hp here
 
-    # MODIFIED: Added equipped_cloak and equipped_misc_items to returned values
-    return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+    # MODIFIED: Added equipped_cloak, equipped_misc_items, and player_attack_bonus to returned values
+    return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
 # MODIFIED: Added equipped_cloak to parameters
 def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain):
@@ -985,7 +985,7 @@ def interact_with_quest_giver(npc, player_quests, player_level, player_inventory
     return player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level
 
 # MODIFIED: Added equipped_cloak to parameters and save state
-def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history): # Added player_keychain
+def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history): # Added player_keychain and player_attack_bonus
     """Saves the current game state to 'savegame.json'."""
     game_state = {
         'player_hp': player_hp,
@@ -997,6 +997,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
         'equipped_armor_value': equipped_armor_value, # Now stores item dict or None
         'equipped_cloak': equipped_cloak, # NEW: Save equipped cloak
         'player_attack_power': player_attack_power,
+        'player_attack_bonus': player_attack_bonus, # NEW: Save permanent attack bonus
         'player_attack_variance': player_attack_variance,
         'player_crit_chance': player_crit_chance,
         'player_crit_multiplier': player_crit_multiplier,
@@ -1135,6 +1136,7 @@ def load_game():
                game_state['current_max_inventory_slots'], game_state['player_gold'], \
                player_shield_value_loaded, equipped_armor_value_loaded, equipped_cloak_loaded, \
                game_state.get('player_attack_power', BASE_PLAYER_ATTACK_POWER), \
+               game_state.get('player_attack_bonus', 0), \
                game_state.get('player_attack_variance', BASE_PLAYER_ATTACK_VARIANCE), \
                game_state.get('player_crit_chance', BASE_PLAYER_CRIT_CHANCE), \
                game_state.get('player_crit_multiplier', BASE_PLAYER_CRIT_MULTIPLIER), \
@@ -1151,12 +1153,12 @@ def load_game():
 
     except FileNotFoundError:
         print("\nNo saved game found. Starting a new adventure.")
-        # MODIFIED: Added None for equipped_cloak in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
     except json.JSONDecodeError:
         print("\nError: Corrupted save file. Starting a new adventure.")
-        # MODIFIED: Added None for equipped_cloak in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 
 # --- Classes ---
@@ -1481,7 +1483,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -1604,8 +1606,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     # Handle regular monster combat (if present and not a winning item guardian)
     if current_room.monster and not current_room.monster.get('is_boss_guardian', False): # For regular monsters
         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-            handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+            handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
                                   player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
         player_gold += gold_gained
@@ -1623,7 +1625,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 
     while True:
-        player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items)
+        player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
 
 
         command_input = input("> ").lower().strip()
@@ -1891,8 +1893,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 # Handle regular monsters that just spawned (not winning item guardians)
                 elif current_room.monster and not current_room.monster.get('is_boss_guardian', False):
                     player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                    player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-                        handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                    player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                        handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
                                       player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                     player_gold += gold_gained
@@ -1977,8 +1979,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         print(f"A fierce {current_room.monster['name']} manifests, enraged by your theft!")
                         # Immediately initiate combat with the boss
                         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                        player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-                            handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                            handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
                                           player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                         player_gold += gold_gained
@@ -2158,7 +2160,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
                 if stat_changes:
                     if 'attack_power' in stat_changes:
-                        player_attack_power += stat_changes['attack_power']
+                        player_attack_bonus += stat_changes['attack_power']
                         print(f"Your base attack power has permanently increased by {stat_changes['attack_power']}!")
                     elif 'max_hp' in stat_changes:
                         hp_increase = stat_changes['max_hp']
@@ -2197,7 +2199,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             if item_found_in_inventory:
                 player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                     handle_equip_item(item_found_in_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level)
-                player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items)
+                player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
                 print(f"Your attack power is now {player_attack_power}.")
             else:
                 print(f"You don't have {item_to_equip_name_input} in your inventory, or it's not an equipable item (weapon, shield, or armor).")
@@ -2255,8 +2257,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
             if current_room.monster:
                 player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-                    handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                    handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                   current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
                                   player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                 player_gold += gold_gained
@@ -2583,8 +2585,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             print(fail_penalty['message'])
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-                                handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                                handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
                                               player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                             player_gold += gold_gained
@@ -2662,8 +2664,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             print(fail_penalty['message'])
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-                                handle_combat(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                                handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
                                               player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
                             player_gold += gold_gained
@@ -2770,8 +2772,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     print("Nothing seems to happen.")
 
         elif verb == "save":
-            # MODIFIED: Added equipped_cloak to save_game parameters
-            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain
+            # MODIFIED: Added equipped_cloak and player_attack_bonus to save_game parameters
+            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain and bonus
 
         elif verb == "ohvendor":
             guvna_npc_def = next((n for n in NPCs if n.get('name') == 'Stranger' and n.get('type') == 'vendor'), None)
@@ -2813,6 +2815,7 @@ def main():
             player_hp = 100
             max_hp = 100
             player_attack_power = BASE_PLAYER_ATTACK_POWER
+            player_attack_bonus = 0 # NEW: For permanent stat boosts from items
             player_attack_variance = BASE_PLAYER_ATTACK_VARIANCE
             player_crit_chance = BASE_PLAYER_CRIT_CHANCE
             player_crit_multiplier = BASE_PLAYER_CRIT_MULTIPLIER
@@ -2867,8 +2870,8 @@ def main():
             # This inner loop now allows the player to continue their adventure
             # after "winning" or after "losing" if they choose to restart.
             while True:
-                # MODIFIED: Added equipped_cloak to game_loop parameters
-                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain
+                # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
+                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain and bonus
 
                 if game_result == 'continue_adventure':
                     # Player chose to continue after main objective.
@@ -2939,8 +2942,8 @@ def main():
         elif main_menu_choice == '2':
             # Load Game
             loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
-            loaded_attack_power, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
-            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, room_history, direction_history = load_game() # Get loaded_player_keychain and equipped_cloak
+            loaded_attack_power, loaded_attack_bonus, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, room_history, direction_history = load_game() # Get loaded_player_keychain, equipped_cloak, and player_attack_bonus
 
             print("=" * 40)
             if loaded_hp is not None:
@@ -2955,6 +2958,7 @@ def main():
                 equipped_armor_value = loaded_armor
                 equipped_cloak = loaded_cloak # NEW: Assign loaded equipped_cloak
                 player_attack_power = loaded_attack_power
+                player_attack_bonus = loaded_attack_bonus # NEW: Assign loaded attack bonus
                 player_attack_variance = loaded_attack_variance
                 player_crit_chance = loaded_crit_chance
                 player_crit_multiplier = loaded_crit_multiplier
