@@ -1115,7 +1115,7 @@ def load_game():
         with open('savegame.json', 'r') as f:
             game_state = json.load(f)
 
-        loaded_room = Room(game_state.get('player_level', 1), load_from_save=True)
+        loaded_room = Room(game_state.get('player_level', 1), game_state.get('player_quests', {}), load_from_save=True)
         loaded_room.description = game_state['current_room']['description']
         loaded_room.exits = {direction: True for direction in game_state['current_room']['exits']}
         loaded_room.locked_exits = game_state['current_room']['locked_exits']
