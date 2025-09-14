@@ -3702,8 +3702,8 @@
       "dialogue_complete_ready": "You've found all the glowing mushrooms! Bring them to me. Type 'turn in The Collector's Curiosities' to get your reward.",
       "dialogue_complete_turn_in": "Thank you for these beautiful mushrooms! Here is your reward.",
       "dialogue_unavailable": "I have no other tasks for you right now.",
-      "required_level": 5,
-      "prerequisite_quest": "any_foe_iii",
+      "required_level": 1,
+      "prerequisite_quest": null,
       "is_repeatable": false
     },
     {
