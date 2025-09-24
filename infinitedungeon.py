@@ -524,7 +524,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
 
     while player_hp > 0 and monster_current_hp > 0:
 
-        print("\nWhat do you do? (attack / run / use [item name] / inventory / help)")
+        print("\nWhat do you do? (attack / heal / run / use [item name] / inventory / help)")
         combat_command_input = input("Combat Action> ").lower().strip()
         parts = combat_command_input.split()
 
@@ -606,6 +606,32 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                 monster_data = None
                 break
 
+        elif verb == "heal":
+            # Find the best healing item in the inventory
+            best_healing_item = None
+            max_heal = 0
+            for item in player_inventory:
+                if item.get('type') == 'consumable' and item.get('effect_type') == 'heal':
+                    heal_amount = item.get('effect_value', 0)
+                    if heal_amount > max_heal:
+                        max_heal = heal_amount
+                        best_healing_item = item
+
+            if best_healing_item:
+                original_player_hp = player_hp
+                player_hp, max_hp, current_max_inventory_slots, consumed_turn, _ = process_item_use(best_healing_item, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
+                action_taken = consumed_turn
+
+                if player_hp <= 0:
+                    print(f"You succumb to the effects of {add_article(best_healing_item['name'])}...")
+                    break
+
+                if consumed_turn and player_hp != original_player_hp:
+                    print(f"Your health is now {player_hp}/{max_hp} HP.")
+
+            else:
+                print("You don't have any healing items.")
+                continue
         elif verb == "run":
             run_chance = random.random()
             if run_chance > 0.5:
@@ -735,6 +761,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             print("\nAvailable commands:")
             print("    (Press Enter) or attack - Strike the monster.") # Updated help text
             print("    run                   - Attempt to escape the fight (may fail).")
+            print("    heal                  - Use the best healing item in your inventory.")
             print("    use [item]            - Use any consumable from your inventory (e.g., 'use healing potion').")
             print("    inventory             - View your current inventory (does not cost a turn).")
             # NEW: Add 'equipped' to combat help
