@@ -241,9 +241,8 @@ def calculate_xp_for_next_level(current_level):
     """Calculates the XP required for the next level."""
     return int(BASE_XP_TO_LEVEL_UP * (XP_SCALE_FACTOR ** (current_level - 1)))
 
-def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager):
+def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
     """Applies level-up bonuses to player stats."""
-    sound_manager.play_sound('level_up')
     player_level += 1
 
     old_max_hp = max_hp
@@ -268,13 +267,13 @@ def level_up_player(player_hp, max_hp, player_level, player_attack_power, player
 
     return player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
 
-def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager):
+def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
     """Checks if the player has enough XP to level up and calls level_up_player."""
     while player_xp >= xp_to_next_level:
         player_xp -= xp_to_next_level
 
         player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager)
+            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
 
         xp_to_next_level = calculate_xp_for_next_level(player_level)
 
@@ -521,7 +520,8 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                            (equipped_armor_value.get('defense', 0) if equipped_armor_value else 0) + \
                            (equipped_cloak.get('defense', 0) if equipped_cloak else 0)
 
-
+    sound_manager.stop_music()
+    sound_manager.play_music('combat_music')
     print(f"\n--- Combat with {monster_name} ---")
     print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}") # FIXED: Used max_hp here
     if total_player_defense > 0:
@@ -544,7 +544,6 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
         action_taken = False
 
         if verb == "attack":
-            sound_manager.play_sound('player_attack')
             base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
 
             is_crit = False
@@ -607,7 +606,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                                     print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
 
                 player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager)
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
 
                 monster_data = None
                 break
@@ -815,6 +814,8 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
         if player_hp > 0 and monster_current_hp > 0:
             print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}") # FIXED: Used max_hp here
 
+    sound_manager.stop_music()
+    sound_manager.play_music('ambient_music')
     # MODIFIED: Added equipped_cloak, equipped_misc_items, and player_attack_bonus to returned values
     return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
@@ -1125,7 +1126,7 @@ def interact_with_quest_giver(npc, player_quests, player_level, player_inventory
 
                 player_quests[npc_quest_id]['status'] = 'completed'
                 player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager)
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
     elif quest_status == 'completed' and quest_def:
         print(f"{npc['name']}: '{quest_def.get('dialogue_complete_turn_in', 'Thank you for your help.')}'")
 
@@ -1581,7 +1582,6 @@ class Room:
 
                     if eligible_monsters:
                         self.monster = dict(random.choices(eligible_monsters, weights=monster_weights, k=1)[0])
-
 
     def show_description(self, direction_history=None):
         """Prints the full description of the room."""

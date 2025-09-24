@@ -3810,8 +3810,7 @@
     }
   },
   "sounds": {
-    "player_attack": "sounds/attack.ogg",
-    "level_up": "sounds/level_up.ogg",
-    "ambient_music": "sounds/background.ogg"
+    "ambient_music": "sounds/infinitedungeonambience.wav",
+    "combat_music": "sounds/infinitedungeoncombat.wav"
   }
 }
