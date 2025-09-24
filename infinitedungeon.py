@@ -6,6 +6,7 @@ import os
 import debug # Import debug module
 import copy
 from datetime import datetime
+from sound import Sound
 
 # --- History Log ---
 HISTORY_LOG_FILE = "history_log.txt"
@@ -24,6 +25,9 @@ DEBUG = True # Set to True to enable debug prints and file logging, False to dis
 # Initialize debug log based on the DEBUG flag
 if DEBUG: # Wrapped debug initialization
     debug.initialize_debug_log(DEBUG)
+
+# --- Sound Manager ---
+sound_manager = Sound(sound_enabled=True)
 
 # --- Game Data ---
 # Function to get the path to resource files, whether running as script or as PyInstaller bundle
@@ -237,8 +241,9 @@ def calculate_xp_for_next_level(current_level):
     """Calculates the XP required for the next level."""
     return int(BASE_XP_TO_LEVEL_UP * (XP_SCALE_FACTOR ** (current_level - 1)))
 
-def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
+def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager):
     """Applies level-up bonuses to player stats."""
+    sound_manager.play_sound('level_up')
     player_level += 1
 
     old_max_hp = max_hp
@@ -263,13 +268,13 @@ def level_up_player(player_hp, max_hp, player_level, player_attack_power, player
 
     return player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
 
-def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
+def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager):
     """Checks if the player has enough XP to level up and calls level_up_player."""
     while player_xp >= xp_to_next_level:
         player_xp -= xp_to_next_level
 
         player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager)
 
         xp_to_next_level = calculate_xp_for_next_level(player_level)
 
@@ -492,7 +497,7 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager):
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
@@ -539,6 +544,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
         action_taken = False
 
         if verb == "attack":
+            sound_manager.play_sound('player_attack')
             base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
 
             is_crit = False
@@ -601,7 +607,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                                     print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
 
                 player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager)
 
                 monster_data = None
                 break
@@ -996,7 +1002,7 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
     # MODIFIED: Added equipped_cloak to returned values
     return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
 
-def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain):
+def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager):
     """
     Manages the inn interaction, allowing the player to rest and talk to quest givers.
     Returns updated player state.
@@ -1038,7 +1044,7 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
                 chosen_npc = next((n for n in quest_givers if n['name'].lower() == npc_name_to_talk.lower()), None)
                 if chosen_npc:
                     player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
-                        interact_with_quest_giver(chosen_npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                        interact_with_quest_giver(chosen_npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
                 else:
                     print(f"You don't see anyone named '{npc_name_to_talk}' here.")
 
@@ -1052,7 +1058,7 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
     return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
 
 
-def interact_with_quest_giver(npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain):
+def interact_with_quest_giver(npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager):
     """Handles all interaction logic with a quest-giving NPC."""
     print(f"\nYou approach {npc['name']}.")
     npc_quest_id = npc.get('current_quest_id')
@@ -1119,7 +1125,7 @@ def interact_with_quest_giver(npc, player_quests, player_level, player_inventory
 
                 player_quests[npc_quest_id]['status'] = 'completed'
                 player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, sound_manager)
     elif quest_status == 'completed' and quest_def:
         print(f"{npc['name']}: '{quest_def.get('dialogue_complete_turn_in', 'Thank you for your help.')}'")
 
@@ -1633,7 +1639,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -1763,7 +1769,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
         player_gold += gold_gained
         if player_hp <= 0:
             print("\n" + "=" * 40)
@@ -2051,7 +2057,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                         handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
                     player_gold += gold_gained
                     if player_hp <= 0:
                         print("\n" + "=" * 40)
@@ -2137,7 +2143,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
                         player_gold += gold_gained
                         if player_hp <= 0:
                             print("\n" + "=" * 40)
@@ -2622,7 +2628,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             if current_room.npc:
                 if current_room.npc.get('type') == 'quest_giver':
                     player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
-                        interact_with_quest_giver(current_room.npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                        interact_with_quest_giver(current_room.npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
                 else:
                     # Existing non-quest-giver talk logic
                     print(f"You approach {current_room.npc['name']}.")
@@ -2751,7 +2757,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -2830,7 +2836,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -2957,7 +2963,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         elif verb == "ohinn":
             player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
-                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
             display_room_content_summary(current_room, rooms_travelled, direction_history)
 
         elif verb == "credits":
@@ -2979,6 +2985,7 @@ def main():
         main_menu_choice = input("Enter your choice: ").strip()
 
         if main_menu_choice == '1':
+            sound_manager.play_music('ambient_music')
             # Initialize player stats for a New Game
             player_hp = 100
             max_hp = 100
@@ -3039,7 +3046,7 @@ def main():
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
-                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain and bonus
+                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager) # Pass keychain and bonus
 
                 if game_result == 'continue_adventure':
                     # Player chose to continue after main objective.
@@ -3181,8 +3188,9 @@ def main():
 
                 # This inner loop also applies to loaded games
                 while True:
+                    sound_manager.play_music('ambient_music')
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain
+                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager) # Pass keychain
 
                     if game_result == 'continue_adventure':
                         current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
