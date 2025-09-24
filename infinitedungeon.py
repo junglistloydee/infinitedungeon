@@ -2678,16 +2678,24 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     status = get_player_quest_status(player_quests, q_id)
 
                     progress_info = ""
-                    if quest_def['type'] == 'defeat_any_monster' or quest_def['type'] == 'defeat_monster':
-                        progress_info = f" (Defeated: {q_data['current_count']}/{quest_def['target_count']} enemies)"
-                    elif quest_def['type'] == 'fetch_item':
-                        progress_info = f" (Collected: {q_data['current_count']}/{quest_def['target_count']} {quest_def.get('target_item','')}s)"
-
+                    if quest_def['type'] in ['defeat_any_monster', 'defeat_monster', 'fetch_item']:
+                        # Check if progress tracking is possible
+                        if 'current_count' in q_data and 'target_count' in quest_def:
+                            if quest_def['type'] == 'fetch_item':
+                                progress_info = f" (Collected: {q_data['current_count']}/{quest_def['target_count']} {quest_def.get('target_item','')}s)"
+                            else:
+                                progress_info = f" (Defeated: {q_data['current_count']}/{quest_def['target_count']} enemies)"
 
                     print(f"- {quest_def['name']} [{status.upper()}]{progress_info}")
                     print(f"  Description: {quest_def.get('description', 'No description provided.')}")
+
                     if status == 'active':
-                        dialogue_line = quest_def.get('dialogue_active', 'Continue quest').format(current_count=q_data['current_count'], target_count=quest_def['target_count'])
+                        # Check if the quest dialogue can be formatted with counts
+                        if 'current_count' in q_data and 'target_count' in quest_def:
+                            dialogue_line = quest_def.get('dialogue_active', 'Continue quest').format(current_count=q_data['current_count'], target_count=quest_def['target_count'])
+                        else:
+                            # Fallback for quests without countable progress (e.g., find_npc)
+                            dialogue_line = quest_def.get('dialogue_active', 'Continue quest')
                         print(f"  Goal: {dialogue_line}")
                     elif status == 'complete_ready':
                         print(f"  Goal: Return to {quest_def['giver_npc_name']} to turn in!")
