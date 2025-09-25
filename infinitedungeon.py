@@ -819,11 +819,11 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     # MODIFIED: Added equipped_cloak, equipped_misc_items, and player_attack_bonus to returned values
     return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
-# MODIFIED: Added equipped_cloak to parameters
-def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager):
+# MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
+def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager, equipped_misc_items):
     """
     Manages the shop interaction with a vendor NPC.
-    Returns updated player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon.
+    Returns updated player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, and equipped_misc_items.
     """
     vendor_name = vendor_data['name']
     shop_stock_names = vendor_data.get('shop_stock', [])
@@ -999,8 +999,8 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
             print(random.choice(shop_dialogues))
             sound_manager.stop_music()
             sound_manager.play_music('ambient_music')
-            # MODIFIED: Added equipped_cloak to returned values
-            return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
+            # MODIFIED: Added equipped_cloak and equipped_misc_items to returned values
+            return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain, equipped_misc_items
         else:
             print("Invalid shop command. Type 'buy', 'sell', or 'exit'.")
 
@@ -2663,8 +2663,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                                 print(f"Quest Update: You have found {current_room.npc['name']} for the quest '{quest_def['name']}'!")
                                 print(f"Return to {quest_def['giver_npc_name']} to complete the quest.")
                     if current_room.npc.get('type') == 'vendor':
-                        player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain, player_level, sound_manager)
+                        player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain, equipped_misc_items = \
+                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain, player_level, sound_manager, equipped_misc_items)
             else:
                 print("There's no one here to talk to.")
 
@@ -2977,9 +2977,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("\n" + "=" * 30)
                 print("\nA mysterious figure shimmers into existence from the shadows...")
                 print("You hear a gruff voice say: 'Heh heh heh... What're ya buyin'?'")
-                # MODIFIED: Added equipped_cloak to handle_shop parameters
-                player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                    handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain, player_level, sound_manager) # Pass keychain
+                # MODIFIED: Added equipped_cloak and equipped_misc_items to handle_shop parameters
+                player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain, equipped_misc_items = \
+                    handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain, player_level, sound_manager, equipped_misc_items) # Pass keychain and misc items
                 print("\n" + "=" * 30)
                 # After returning from handle_shop, display room summary
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
