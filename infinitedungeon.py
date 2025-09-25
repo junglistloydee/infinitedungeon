@@ -820,7 +820,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
 # MODIFIED: Added equipped_cloak to parameters
-def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level):
+def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager):
     """
     Manages the shop interaction with a vendor NPC.
     Returns updated player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon.
@@ -836,6 +836,8 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
             scaled_item = scale_item_for_player_level(item_def, player_level)
             shop_items.append(scaled_item)
 
+    sound_manager.stop_music()
+    sound_manager.play_music('vendor_music')
     print(f"\n--- {vendor_name}'s Shop ---")
     print(random.choice(shop_dialogues))
 
@@ -995,19 +997,20 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
 
         elif verb == "exit":
             print(random.choice(shop_dialogues))
+            sound_manager.stop_music()
+            sound_manager.play_music('ambient_music')
             # MODIFIED: Added equipped_cloak to returned values
             return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
         else:
             print("Invalid shop command. Type 'buy', 'sell', or 'exit'.")
-
-    # MODIFIED: Added equipped_cloak to returned values
-    return player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain
 
 def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager):
     """
     Manages the inn interaction, allowing the player to rest and talk to quest givers.
     Returns updated player state.
     """
+    sound_manager.stop_music()
+    sound_manager.play_music('inn_music')
     print("\n--- The Hearth and Home Inn ---")
     print("You find yourself in a cozy, bustling inn. A warm fire crackles in the hearth.")
 
@@ -1051,11 +1054,15 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
 
         elif verb == "leave":
             print("You step out of the inn, back into the dungeon's gloom.")
+            sound_manager.stop_music()
+            sound_manager.play_music('ambient_music')
             return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
 
         else:
             print("Invalid inn command. Type 'rest', 'talk', or 'leave'.")
 
+    sound_manager.stop_music()
+    sound_manager.play_music('ambient_music')
     return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
 
 
@@ -2004,6 +2011,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room = room_history.pop()
                 direction_history.pop()
                 rooms_travelled -= 1
+                sound_manager.stop_music()
+                if getattr(current_room, 'is_inn', False):
+                    sound_manager.play_music('inn_music')
+                else:
+                    sound_manager.play_music('ambient_music')
                 log_event(f"Player {player_name} returned to Room #{rooms_travelled}.")
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
                 continue
@@ -2015,7 +2027,12 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 room_history.append(current_room)
                 direction_history.append(direction)
 
+                sound_manager.stop_music()
                 current_room = Room(player_level, player_quests, entry_direction=direction)
+                if getattr(current_room, 'is_inn', False):
+                    sound_manager.play_music('inn_music')
+                else:
+                    sound_manager.play_music('ambient_music')
                 rooms_travelled += 1
                 log_event(f"Player {player_name} entered Room #{rooms_travelled} travelling {direction}. Description: {current_room.description}")
 
@@ -2647,7 +2664,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                                 print(f"Return to {quest_def['giver_npc_name']} to complete the quest.")
                     if current_room.npc.get('type') == 'vendor':
                         player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain, player_level)
+                            handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain, player_level, sound_manager)
             else:
                 print("There's no one here to talk to.")
 
@@ -2962,7 +2979,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("You hear a gruff voice say: 'Heh heh heh... What're ya buyin'?'")
                 # MODIFIED: Added equipped_cloak to handle_shop parameters
                 player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain = \
-                    handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain, player_level) # Pass keychain
+                    handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain, player_level, sound_manager) # Pass keychain
                 print("\n" + "=" * 30)
                 # After returning from handle_shop, display room summary
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
@@ -2993,7 +3010,6 @@ def main():
         main_menu_choice = input("Enter your choice: ").strip()
 
         if main_menu_choice == '1':
-            sound_manager.play_music('ambient_music')
             # Initialize player stats for a New Game
             player_hp = 100
             max_hp = 100
@@ -3029,6 +3045,11 @@ def main():
             log_event(f"New game started for player: {player_name}.")
 
             current_room = Room(player_level, player_quests)
+            sound_manager.stop_music()
+            if getattr(current_room, 'is_inn', False):
+                sound_manager.play_music('inn_music')
+            else:
+                sound_manager.play_music('ambient_music')
 
             wooden_sword_def = get_item_by_name('wooden sword')
             if wooden_sword_def:
@@ -3196,7 +3217,11 @@ def main():
 
                 # This inner loop also applies to loaded games
                 while True:
-                    sound_manager.play_music('ambient_music')
+                    sound_manager.stop_music()
+                    if getattr(current_room, 'is_inn', False):
+                        sound_manager.play_music('inn_music')
+                    else:
+                        sound_manager.play_music('ambient_music')
                     # MODIFIED: Added equipped_cloak to game_loop parameters
                     game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager) # Pass keychain
 

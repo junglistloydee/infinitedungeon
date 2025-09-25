@@ -3811,6 +3811,8 @@
   },
   "sounds": {
     "ambient_music": "sounds/infinitedungeonambience.wav",
-    "combat_music": "sounds/infinitedungeoncombat.wav"
+    "combat_music": "sounds/infinitedungeoncombat.wav",
+    "inn_music": "sounds/infinitedungeoninn.wav",
+    "vendor_music": "sounds/infinitedungeonvendor.wav"
   }
 }
