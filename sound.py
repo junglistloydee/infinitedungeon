@@ -2,6 +2,7 @@ import pygame
 import json
 import os
 import sys
+import random
 import debug
 
 # Function to get the path to resource files, whether running as script or as PyInstaller bundle
@@ -55,16 +56,26 @@ class Sound:
             with open(game_data_path, 'r') as f:
                 game_data = json.load(f)
                 sound_data = game_data.get('sounds', {})
-                for key, relative_path in sound_data.items():
-                    sound_file_path = resource_path(relative_path)
-                    if os.path.exists(sound_file_path):
+                for key, value in sound_data.items():
+                    if isinstance(value, list):
+                        # Handle list of sound paths for music
                         if 'music' in key:
-                            self.sounds[key] = sound_file_path
-                        else:
-                            self.sounds[key] = pygame.mixer.Sound(sound_file_path)
-                        debug.debug_print(f"Loaded sound: {key} -> {sound_file_path}")
+                            self.sounds[key] = [resource_path(p) for p in value if os.path.exists(resource_path(p))]
+                            if not self.sounds[key]:
+                                debug.debug_print(f"No valid sound files found for music key: {key}")
+                            else:
+                                debug.debug_print(f"Loaded music playlist: {key} -> {self.sounds[key]}")
                     else:
-                        debug.debug_print(f"Sound file not found for {key}: {sound_file_path}")
+                        # Handle single sound path
+                        sound_file_path = resource_path(value)
+                        if os.path.exists(sound_file_path):
+                            if 'music' in key:
+                                self.sounds[key] = sound_file_path
+                            else:
+                                self.sounds[key] = pygame.mixer.Sound(sound_file_path)
+                            debug.debug_print(f"Loaded sound: {key} -> {sound_file_path}")
+                        else:
+                            debug.debug_print(f"Sound file not found for {key}: {sound_file_path}")
         except FileNotFoundError:
             debug.debug_print(f"Game data file not found: {game_data_path}")
         except json.JSONDecodeError:
@@ -84,10 +95,17 @@ class Sound:
             return
 
         if key in self.sounds:
+            sound_path = self.sounds[key]
+            # If the sound path is a list, pick a random one
+            if isinstance(sound_path, list):
+                music_file = random.choice(sound_path)
+            else:
+                music_file = sound_path
+
             try:
-                pygame.mixer.music.load(self.sounds[key])
+                pygame.mixer.music.load(music_file)
                 pygame.mixer.music.play(loops)
-                debug.debug_print(f"Playing music: {key}")
+                debug.debug_print(f"Playing music: {key} -> {music_file}")
             except pygame.error as e:
                 debug.debug_print(f"Error playing music {key}: {e}")
         else:
