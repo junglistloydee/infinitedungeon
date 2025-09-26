@@ -2637,7 +2637,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     chosen_npc = next((n for n in quest_givers if n['name'].lower() == npc_name_to_talk.lower()), None)
                     if chosen_npc:
                         player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
-                            interact_with_quest_giver(chosen_npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain)
+                            interact_with_quest_giver(chosen_npc, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
                     else:
                         print(f"You don't see anyone named '{npc_name_to_talk}' here.")
                 continue
