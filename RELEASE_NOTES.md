@@ -1,0 +1,30 @@
+# Release Notes
+
+- Merge pull request #29 from junglistloydee/feature/multiple-ambient-sounds
+- feat: Allow multiple ambient sound tracks
+- feat: Add Windows build script and fix sound loading issue
+- Add build script and .gitignore
+- Refactor: Decouple inn generation from room creation
+- Fix TypeError when talking to NPCs in the inn
+- Fix NameError in handle_shop function
+- feat: Add music for inns and vendors
+- Fix KeyError when displaying quests without progress counters
+- feat: Implement dynamic music system
+- feat: Add heal command to combat menu
+- feat: Add 'The Unfit Bridesmaid' quest
+- feat: Implement level-based item scaling
+- Remove prerequisite for Elara's first fetch quest
+- Fix TypeError in game_loop function call
+- Fix TypeError in game_loop function call
+- feat: Add 'ohinn' command to access a mystical inn
+- Fix weapon attack power calculation and permanent boosts
+- Fix puzzle rewards not being granted
+- feat: Implement room history for 'go back' functionality
+- feat: Add Inn location for resting and quests
+- feat: Add navigation log to trace player steps
+- feat: Add consumables for permanent stat boosts
+- feat: Add quick equip option and 'quip' alias
+- feat: Implement unequip command and misc item effects
+- This commit introduces a prerequisite system for quest giver spawning.
+- feat: Add enemy item drops after unlocking rooms
+- feat: Add 4 new fetch quests and NPCs
