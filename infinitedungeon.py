@@ -1365,25 +1365,6 @@ class Room:
         # --- Inn Generation ---
         if random.random() < INN_SPAWN_CHANCE:
             self.is_inn = True
-            self.description = "You find yourself in a cozy, bustling inn. A warm fire crackles in the hearth, and the air is filled with the murmur of conversations. Several interesting characters are gathered here, offering a moment of respite from the dungeon's dangers."
-            self.exits = {}
-            all_possible_directions = ["north", "south", "east", "west"]
-            guaranteed_unlocked_direction = random.choice(all_possible_directions)
-            self.exits[guaranteed_unlocked_direction] = True
-            available_directions_for_random = [d for d in all_possible_directions if d != guaranteed_unlocked_direction]
-            for direction in available_directions_for_random:
-                if random.random() < 0.5:
-                    self.exits[direction] = True
-
-            self.locked_exits = {}
-            self.item = None
-            self.npc = None
-            self.hazard = None
-            self.monster = None
-            self.puzzle = None
-            self.winning_item_just_spawned = False
-            self.boss_monster_spawned = False
-            self.awaiting_winning_item_pickup = False
             return # Prevent other content from spawning
 
         adj = random.choice(ADJECTIVES)
@@ -2029,10 +2010,15 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
                 sound_manager.stop_music()
                 current_room = Room(player_level, player_quests, entry_direction=direction)
-                if getattr(current_room, 'is_inn', False):
-                    sound_manager.play_music('inn_music')
-                else:
-                    sound_manager.play_music('ambient_music')
+                # --- NEW: Handle if the new room is an inn ---
+                while getattr(current_room, 'is_inn', False):
+                    player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
+                        handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+
+                    print("You leave the inn to continue your journey.")
+                    current_room = Room(player_level, player_quests) # Generate a new room
+                # --- END NEW ---
+                sound_manager.play_music('ambient_music') # Always play ambient after moving, as inn handles its own music.
                 rooms_travelled += 1
                 log_event(f"Player {player_name} entered Room #{rooms_travelled} travelling {direction}. Description: {current_room.description}")
 
@@ -3045,11 +3031,17 @@ def main():
             log_event(f"New game started for player: {player_name}.")
 
             current_room = Room(player_level, player_quests)
+            # --- NEW: Handle if the first room is an inn ---
+            while getattr(current_room, 'is_inn', False):
+                print("You stumble upon a cozy inn right at the start of your adventure!")
+                player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
+                    handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+
+                print("You leave the inn, ready to begin your journey.")
+                current_room = Room(player_level, player_quests) # Generate a new room to start in
+            # --- END NEW ---
             sound_manager.stop_music()
-            if getattr(current_room, 'is_inn', False):
-                sound_manager.play_music('inn_music')
-            else:
-                sound_manager.play_music('ambient_music')
+            sound_manager.play_music('ambient_music')
 
             wooden_sword_def = get_item_by_name('wooden sword')
             if wooden_sword_def:
@@ -3222,6 +3214,16 @@ def main():
                         sound_manager.play_music('inn_music')
                     else:
                         sound_manager.play_music('ambient_music')
+
+                    # --- NEW: Handle if a loaded room is an inn ---
+                    while getattr(current_room, 'is_inn', False):
+                        print("You load your game and find yourself in a welcoming inn.")
+                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
+                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+
+                        print("You leave the inn to continue your journey.")
+                        current_room = Room(player_level, player_quests) # Generate a new room
+                    # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
                     game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager) # Pass keychain
 
