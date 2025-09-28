@@ -78,8 +78,22 @@ You can run this game on your local machine with Python.
 
 ### Running the Game
 
+#### Quick Start
+- **On Windows**: Double-click `build.bat` to run the game.
+- **On macOS/Linux**: Open your terminal, make the script executable with `chmod +x build.sh`, then run `./build.sh`.
+
+#### Manual Start
 1. **Open Terminal**: Open your terminal or command prompt (e.g., cmd, PowerShell, Terminal).
    
 2. **Clone the Repository**: Use git to download all the necessary game files (infinitedungeon.py, gamedata.json, etc.).
    ```bash
    git clone https://github.com/junglistloydee/infinitedungeon.git
+   ```
+3. **Navigate to the Directory**:
+   ```bash
+   cd infinitedungeon
+   ```
+4. **Run the Game**:
+   ```bash
+   python3 infinitedungeon.py
+   ```
