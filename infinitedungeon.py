@@ -1165,6 +1165,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
         'rooms_travelled': rooms_travelled,
         'player_keychain': player_keychain, # Added to save state
         'equipped_misc_items': equipped_misc_items,
+        'special_event_after_unlock': special_event_after_unlock,
         'room_history_data': [
             {
                 'description': room.description,
@@ -1210,9 +1211,12 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
 # MODIFIED: Added equipped_cloak to returned and loaded state
 def load_game():
     """Loads the game state from 'savegame.json' and returns it."""
+    global special_event_after_unlock
     try:
         with open('savegame.json', 'r') as f:
             game_state = json.load(f)
+
+        special_event_after_unlock = game_state.get('special_event_after_unlock')
 
         loaded_room = Room(game_state.get('player_level', 1), game_state.get('player_quests', {}), load_from_save=True)
         loaded_room.description = game_state['current_room']['description']
