@@ -91,6 +91,9 @@ if DEBUG: # Wrapped debug calls
 QUESTS = GAME_DATA.get('quests', [])
 if DEBUG: # Wrapped debug calls
     debug.debug_print(f"Loaded {len(QUESTS)} quests.")
+SHRINES = GAME_DATA.get('shrines', [])
+if DEBUG: # Wrapped debug calls
+    debug.debug_print(f"Loaded {len(SHRINES)} shrines.")
 
 # Specific debug for item_spawn_weights to confirm it's loaded
 ITEM_SPAWN_WEIGHTS = GAME_DATA.get('item_spawn_weights', {})
@@ -168,10 +171,43 @@ special_event_after_unlock = None
 # --- PUZZLE ROOM CONSTANTS ---
 PUZZLE_SPAWN_CHANCE = 0.10
 
+# --- SHRINE SPAWN CHANCE ---
+SHRINE_SPAWN_CHANCE = 0.08
+
 # --- SHOP CONSTANTS ---
 SELL_PRICE_MULTIPLIER = 0.5
 
 # --- Helper Functions ---
+
+def apply_and_tick_effects(player_effects):
+    """
+    Applies active effects (buffs/curses) to player stats for the current turn
+    and ticks down their duration. Removes expired effects.
+    Returns a dictionary of total modifiers for the current turn.
+    """
+    stat_modifiers = {
+        'attack_power': 0,
+        'defense': 0,
+        'crit_chance': 0.0
+    }
+
+    # Iterate over a copy, as we may modify the list
+    for effect in list(player_effects):
+        stat = effect.get('stat')
+        modifier = effect.get('modifier')
+
+        if stat in stat_modifiers and modifier is not None:
+            stat_modifiers[stat] += modifier
+
+        effect['duration'] -= 1
+
+        if effect['duration'] <= 0:
+            # Check for message key before trying to access it
+            if 'message' in effect and effect['message']:
+                print(f"The effect of '{effect['message'].split('!')[0]}' has worn off.")
+            player_effects.remove(effect)
+
+    return stat_modifiers
 
 def add_article(word):
     """Adds 'a' or 'an' prefix to a word based on its starting letter."""
@@ -496,7 +532,7 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus):
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
@@ -518,7 +554,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     # MODIFIED: Include equipped_cloak in total_player_defense calculation
     total_player_defense = (player_shield_value.get('defense', 0) if player_shield_value else 0) + \
                            (equipped_armor_value.get('defense', 0) if equipped_armor_value else 0) + \
-                           (equipped_cloak.get('defense', 0) if equipped_cloak else 0)
+                           (equipped_cloak.get('defense', 0) if equipped_cloak else 0) + current_defense_bonus
 
     sound_manager.stop_music()
     sound_manager.play_music('combat_music')
@@ -547,7 +583,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
 
             is_crit = False
-            if random.random() < player_crit_chance:
+            if random.random() < (player_crit_chance + current_crit_chance_bonus):
                 damage_dealt = int(base_damage * player_crit_multiplier)
                 is_crit = True
             else:
@@ -1140,7 +1176,7 @@ def interact_with_quest_giver(npc, player_quests, player_level, player_inventory
     return player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level
 
 # MODIFIED: Added equipped_cloak to parameters and save state
-def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history): # Added player_keychain and player_attack_bonus
+def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history): # Added player_keychain and player_attack_bonus
     """Saves the current game state to 'savegame.json'."""
     game_state = {
         'player_hp': player_hp,
@@ -1165,6 +1201,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
         'rooms_travelled': rooms_travelled,
         'player_keychain': player_keychain, # Added to save state
         'equipped_misc_items': equipped_misc_items,
+        'player_effects': player_effects,
         'special_event_after_unlock': special_event_after_unlock,
         'room_history_data': [
             {
@@ -1176,6 +1213,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 'hazard': room.hazard,
                 'monster': room.monster,
                 'puzzle': room.puzzle,
+                'shrine': room.shrine,
                 'winning_item_just_spawned': room.winning_item_just_spawned,
                 'boss_monster_spawned': room.boss_monster_spawned,
                 'awaiting_winning_item_pickup': room.awaiting_winning_item_pickup,
@@ -1192,6 +1230,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
             'hazard': current_room.hazard,
             'monster': current_room.monster,
             'puzzle': current_room.puzzle,
+            'shrine': current_room.shrine,
             'winning_item_just_spawned': current_room.winning_item_just_spawned, # Save this flag
             'boss_monster_spawned': current_room.boss_monster_spawned, # Save this flag
             'awaiting_winning_item_pickup': current_room.awaiting_winning_item_pickup, # Save this flag
@@ -1227,6 +1266,7 @@ def load_game():
         loaded_room.hazard = game_state['current_room'].get('hazard')
         loaded_room.monster = game_state['current_room'].get('monster')
         loaded_room.puzzle = game_state['current_room'].get('puzzle')
+        loaded_room.shrine = game_state['current_room'].get('shrine')
         loaded_room.winning_item_just_spawned = game_state['current_room'].get('winning_item_just_spawned', False) # Load flag
         loaded_room.boss_monster_spawned = game_state['current_room'].get('boss_monster_spawned', False) # Load flag
         loaded_room.awaiting_winning_item_pickup = game_state['current_room'].get('awaiting_winning_item_pickup', False) # Load flag
@@ -1244,6 +1284,7 @@ def load_game():
             room.hazard = room_data.get('hazard')
             room.monster = room_data.get('monster')
             room.puzzle = room_data.get('puzzle')
+            room.shrine = room_data.get('shrine')
             room.winning_item_just_spawned = room_data.get('winning_item_just_spawned', False)
             room.boss_monster_spawned = room_data.get('boss_monster_spawned', False)
             room.awaiting_winning_item_pickup = room_data.get('awaiting_winning_item_pickup', False)
@@ -1308,16 +1349,17 @@ def load_game():
                game_state.get('rooms_travelled', 0), \
                player_keychain_loaded, \
                game_state.get('equipped_misc_items', []), \
+               game_state.get('player_effects', []), \
                room_history_loaded, direction_history_loaded
 
     except FileNotFoundError:
         print("\nNo saved game found. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
     except json.JSONDecodeError:
         print("\nError: Corrupted save file. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 
 # --- Classes ---
@@ -1326,23 +1368,25 @@ class Room:
     """Represents a single, randomly generated room in the dungeon."""
     def __init__(self, player_current_level, player_quests, load_from_save=False, entry_direction=None):
         global special_event_after_unlock
+        # --- INITIALIZE ALL ATTRIBUTES ---
+        self.description = ""
+        self.exits = {}
+        self.locked_exits = {}
+        self.item = None
+        self.npc = None
+        self.hazard = None
+        self.monster = None
+        self.puzzle = None
+        self.shrine = None
+        self.winning_item_just_spawned = False
+        self.boss_monster_spawned = False
+        self.awaiting_winning_item_pickup = False
+        self.is_inn = False
+
         if load_from_save:
-            self.description = ""
-            self.exits = {}
-            self.locked_exits = {}
-            self.item = None # Ensure item is initialized to None for loaded rooms
-            self.npc = None
-            self.hazard = None
-            self.monster = None
-            self.puzzle = None
-            self.winning_item_just_spawned = False
-            self.boss_monster_spawned = False
-            self.awaiting_winning_item_pickup = False
-            self.is_inn = False
-            return
+            return # Stop here for loaded rooms, attributes will be overwritten
 
-        self.is_inn = False # Default to not being an inn
-
+        # --- GENERATE NEW ROOM ---
         if special_event_after_unlock:
             monster_name_to_spawn = special_event_after_unlock.get('monster_name')
             found_monster_def = next((m for m in MONSTERS if m['name'] == monster_name_to_spawn), None)
@@ -1411,6 +1455,7 @@ class Room:
         self.hazard = None
         self.monster = None
         self.puzzle = None
+        self.shrine = None
         self.winning_item_just_spawned = False # Track if winning item just appeared
         self.boss_monster_spawned = False # Track if boss monster has appeared yet
         self.awaiting_winning_item_pickup = False # Track if player needs to pick up winning item
@@ -1425,6 +1470,12 @@ class Room:
                 self.npc = dict(vendor_npc_def)
                 self.npc['talked_to'] = False
             return
+
+        # 1.25. Shrine Spawn Chance
+        if SHRINES and random.random() < SHRINE_SPAWN_CHANCE:
+            self.shrine = copy.deepcopy(random.choice(SHRINES))
+            self.shrine['used'] = False # Mark as not used
+            return # A shrine room should not have other major features
 
         # 1.5. Puzzle Room Spawn Chance
         if PUZZLES and random.random() < PUZZLE_SPAWN_CHANCE:
@@ -1593,6 +1644,13 @@ class Room:
             npc_description = self.npc.get('description', 'stands silently.')
             print(f"You spot {self.npc['name']}: {npc_description}")
 
+        if self.shrine:
+            print(f"Here, you find a {self.shrine['name']}. {self.shrine['description']}")
+            if not self.shrine.get('used'):
+                print(f"    Hint: Try to '{self.shrine['interaction_verb']}'")
+            else:
+                print("It seems to be dormant now.")
+
         if self.puzzle and not self.puzzle.get('solved', True):
             print(f"A puzzle here demands your attention: {self.puzzle['description']}")
 
@@ -1631,7 +1689,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -1761,7 +1819,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
         player_gold += gold_gained
         if player_hp <= 0:
             print("\n" + "=" * 40)
@@ -1777,8 +1835,21 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 
     while True:
-        player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
+        # --- BUFF AND CURSE SYSTEM ---
+        # A turn passes each time the player enters a command.
+        # Apply effects and get modifiers for this turn.
+        effect_modifiers = apply_and_tick_effects(player_effects)
 
+        # Recalculate base stats + permanent bonuses
+        base_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
+
+        # Apply temporary modifiers from effects to get final stats for this turn
+        current_attack_power = base_attack_power + effect_modifiers.get('attack_power', 0)
+        current_defense_bonus = effect_modifiers.get('defense', 0)
+        current_crit_chance_bonus = effect_modifiers.get('crit_chance', 0.0)
+
+        # Update the player's power for this turn (used for display and combat)
+        player_attack_power = current_attack_power
 
         command_input = input("> ").lower().strip()
         parts = command_input.split()
@@ -1929,6 +2000,12 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     print(f"Equipped Weapon: {equipped_weapon['name']} (Damage: {equipped_weapon.get('damage', '?')})")
                 else:
                     print("Equipped Weapon: Fists (Damage: 5)")
+
+                if player_effects:
+                    print("\n--- Active Effects ---")
+                    for effect in player_effects:
+                        print(f"  - {effect['message'].split('!')[0]} ({effect['duration']} turns remaining)")
+                    print("----------------------")
                 continue
 
         # NEW COMMAND: 'equipped'
@@ -2064,7 +2141,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                         handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
                     player_gold += gold_gained
                     if player_hp <= 0:
                         print("\n" + "=" * 40)
@@ -2150,7 +2227,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
                         player_gold += gold_gained
                         if player_hp <= 0:
                             print("\n" + "=" * 40)
@@ -2428,7 +2505,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                     handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                   current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
                 player_gold += gold_gained
                 if player_hp <= 0:
                     print("\n" + "=" * 40)
@@ -2986,6 +3063,81 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             input("Press Enter to continue...")
             display_room_content_summary(current_room, rooms_travelled, direction_history)
 
+        elif verb in ["pray", "drink"]:
+            if current_room.shrine:
+                if current_room.shrine.get('used'):
+                    print(f"The {current_room.shrine['name']} is dormant. Nothing happens.")
+                elif verb == current_room.shrine.get('interaction_verb'):
+                    print(f"You {verb} at the {current_room.shrine['name']}...")
+                    time.sleep(1)
+
+                    # Choose a random effect based on weights
+                    effects = current_room.shrine['effects']
+                    total_weight = sum(e['weight'] for e in effects)
+                    chosen_effect_list = random.choices(effects, weights=[e['weight'] for e in effects], k=1)
+                    if not chosen_effect_list:
+                         print("A strange feeling washes over you, but nothing seems to happen.")
+                         continue
+
+                    chosen_effect = chosen_effect_list[0]
+
+                    print(chosen_effect['message'])
+                    effect_type = chosen_effect['type']
+                    details = chosen_effect['details']
+
+                    if effect_type in ['buff', 'curse']:
+                        # Create a new, flattened dictionary for the active effect
+                        active_effect = {
+                            'stat': details.get('stat'),
+                            'modifier': details.get('modifier'),
+                            'duration': details.get('duration'),
+                            'message': chosen_effect.get('message')
+                        }
+                        player_effects.append(active_effect)
+                    elif effect_type == 'heal':
+                        if details['amount'] == 'full':
+                            player_hp = max_hp
+                        else:
+                            player_hp = min(max_hp, player_hp + details['amount'])
+                        print(f"Your health is now {player_hp}/{max_hp} HP.")
+                    elif effect_type == 'gold':
+                        player_gold += details['amount']
+                        print(f"You now have {player_gold} gold.")
+                    elif effect_type == 'damage':
+                        player_hp -= details['amount']
+                        print(f"Your health is now {player_hp}/{max_hp} HP.")
+                        if player_hp <= 0:
+                            print("\n" + "=" * 40)
+                            print("The shrine delivers a fatal blow! You collapse.")
+                            print("        G A M E    O V E R            ")
+                            print("=" * 40)
+                            if DEBUG: debug.close_debug_log()
+                            return 'lose'
+                    elif effect_type == 'spawn_monster':
+                        monster_def = next((m for m in MONSTERS if m['name'] == details['monster_name']), None)
+                        if monster_def:
+                            current_room.monster = dict(monster_def)
+                            # Initiate combat immediately
+                            player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
+                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                                handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                                            current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
+                                            player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager)
+                            player_gold += gold_gained
+                            if player_hp <= 0:
+                                print("\n" + "=" * 40)
+                                print("Your health has fallen to zero! You collapse.")
+                                print("        G A M E    O V E R            ")
+                                print("=" * 40)
+                                if DEBUG: debug.close_debug_log()
+                                return 'lose'
+
+                    current_room.shrine['used'] = True
+                else:
+                    print(f"You can't '{verb}' at the {current_room.shrine['name']}. Try '{current_room.shrine['interaction_verb']}'.")
+            else:
+                print("There is nothing here to interact with in that way.")
+
         else:
             print("I don't understand that command. Type 'help' for a list of commands.")
 
@@ -3023,6 +3175,7 @@ def main():
             player_name = "Adventurer"
             rooms_travelled = 0
             equipped_misc_items = []
+            player_effects = []
             room_history = []
             direction_history = []
 
@@ -3071,7 +3224,7 @@ def main():
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
-                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager) # Pass keychain and bonus
+                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager) # Pass keychain and bonus
 
                 if game_result == 'continue_adventure':
                     # Player chose to continue after main objective.
@@ -3143,7 +3296,7 @@ def main():
             # Load Game
             loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
             loaded_attack_power, loaded_attack_bonus, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
-            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, room_history, direction_history = load_game() # Get loaded_player_keychain, equipped_cloak, and player_attack_bonus
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, player_effects, room_history, direction_history = load_game() # Get loaded_player_keychain, equipped_cloak, and player_attack_bonus
 
             print("=" * 40)
             if loaded_hp is not None:
@@ -3229,7 +3382,7 @@ def main():
                         current_room = Room(player_level, player_quests) # Generate a new room
                     # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history, sound_manager) # Pass keychain
+                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager) # Pass keychain
 
                     if game_result == 'continue_adventure':
                         current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
