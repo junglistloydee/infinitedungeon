@@ -725,7 +725,8 @@
     "rotting garden",
     "sacred altar",
     "sacred grove",
-    "scorched earth"
+    "scorched earth",
+    "horde room"
   ],
   "details": [
     "A fine, powdery dust, impossibly ancient, lies undisturbed across every surface, thick enough to muffle footsteps and hinting at millennia of stagnation.",
@@ -3947,5 +3948,42 @@
     "combat_music": "sounds/infinitedungeoncombat.wav",
     "inn_music": "sounds/infinitedungeoninn.wav",
     "vendor_music": "sounds/infinitedungeonvendor.wav"
-  }
+  },
+  "hordes": [
+    {
+      "name": "Goblin Horde",
+      "monsters": [
+        "grumpy goblin",
+        "grumpy goblin",
+        "cave troll"
+      ],
+      "size": [
+        3,
+        5
+      ]
+    },
+    {
+      "name": "Rat Infestation",
+      "monsters": [
+        "giant rat",
+        "rabid bat swarm"
+      ],
+      "size": [
+        4,
+        6
+      ]
+    },
+    {
+      "name": "Skeleton Skirmish",
+      "monsters": [
+        "skeletal warrior",
+        "skeletal warrior",
+        "skeletal warrior"
+      ],
+      "size": [
+        3,
+        4
+      ]
+    }
+  ]
 }

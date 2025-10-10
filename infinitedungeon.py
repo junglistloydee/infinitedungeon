@@ -94,6 +94,9 @@ if DEBUG: # Wrapped debug calls
 SHRINES = GAME_DATA.get('shrines', [])
 if DEBUG: # Wrapped debug calls
     debug.debug_print(f"Loaded {len(SHRINES)} shrines.")
+HORDES = GAME_DATA.get('hordes', [])
+if DEBUG: # Wrapped debug calls
+    debug.debug_print(f"Loaded {len(HORDES)} hordes.")
 
 # Specific debug for item_spawn_weights to confirm it's loaded
 ITEM_SPAWN_WEIGHTS = GAME_DATA.get('item_spawn_weights', {})
@@ -173,6 +176,9 @@ PUZZLE_SPAWN_CHANCE = 0.10
 
 # --- SHRINE SPAWN CHANCE ---
 SHRINE_SPAWN_CHANCE = 0.08
+
+# --- HORDE ROOM CONSTANTS ---
+HORDE_SPAWN_CHANCE = 0.05
 
 # --- SHOP CONSTANTS ---
 SELL_PRICE_MULTIPLIER = 0.5
@@ -976,6 +982,62 @@ def handle_gambler(player_gold, gambler_data):
 
     return player_gold
 
+def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet):
+    horde_data = current_room.horde_data
+    horde_name = horde_data['name']
+    horde_monsters = horde_data['monsters']
+    horde_size = random.randint(horde_data['size'][0], horde_data['size'][1])
+
+    print(f"\nA horde of {horde_size} monsters appears! It's a {horde_name}!")
+
+    total_gold_gained = 0
+    total_xp_gained = 0
+
+    for i in range(horde_size):
+        monster_name = random.choice(horde_monsters)
+        monster_def = next((m for m in MONSTERS if m['name'] == monster_name), None)
+        if not monster_def:
+            continue
+
+        monster_data = dict(monster_def)
+        print(f"\n--- Horde Battle ({i+1}/{horde_size}) ---")
+
+        player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
+        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+            handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
+                          monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
+                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet)
+
+        if player_hp <= 0:
+            return 'lose', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+
+        total_gold_gained += gold_gained
+        total_xp_gained += monster_def.get('xp_reward', 0)
+
+    print(f"\n--- Horde Defeated! ---")
+    print(f"You defeated the {horde_name}!")
+    print(f"Total Gold Gained: {total_gold_gained}")
+    print(f"Total XP Gained: {total_xp_gained}")
+
+    player_gold += total_gold_gained
+    player_xp += total_xp_gained
+
+    player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
+        check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+
+    # Special reward for defeating the horde
+    if random.random() < 0.5: # 50% chance of a special item
+        item_def = get_item_by_name(random.choice([item['name'] for item in ALL_ITEMS if item.get('type') not in ['winning_item', 'key']]))
+        if item_def:
+            if len(player_inventory) < current_max_inventory_slots:
+                scaled_item = scale_item_for_player_level(item_def, player_level)
+                player_inventory.append(scaled_item)
+                print(f"You found a special item: {add_article(scaled_item['name'])}!")
+            else:
+                print("You would have received a special item, but your inventory is full!")
+
+    return 'continue', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
 def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager, equipped_misc_items):
     """
@@ -1503,6 +1565,8 @@ class Room:
         self.boss_monster_spawned = False
         self.awaiting_winning_item_pickup = False
         self.is_inn = False
+        self.is_horde_room = False
+        self.horde_data = None
 
         if load_from_save:
             return # Stop here for loaded rooms, attributes will be overwritten
@@ -1535,6 +1599,11 @@ class Room:
         if random.random() < INN_SPAWN_CHANCE:
             self.is_inn = True
             return # Prevent other content from spawning
+
+        if random.random() < HORDE_SPAWN_CHANCE and HORDES:
+            self.is_horde_room = True
+            self.horde_data = random.choice(HORDES)
+            return
 
         adj = random.choice(ADJECTIVES)
         room_type = random.choice(ROOM_TYPES)
@@ -1901,6 +1970,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     # --- End initial player state dump ---
 
 
+    if current_room.is_horde_room:
+        game_result, player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+            handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet)
+        if game_result == 'lose':
+            return 'lose'
     # Handle immediate hazard upon entering room
     if current_room.hazard:
         print(current_room.hazard['effect_message'].format(damage=current_room.hazard['damage']))
