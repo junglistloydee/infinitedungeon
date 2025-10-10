@@ -1,3 +1,9 @@
+--- Debug Log Started: 2025-10-10 20:07:17.300628 ---
+
+[20:07:17] Debug log opened: DEBUG_20251010_200717.txt
+[20:07:17] Error initializing pygame mixer: ALSA: Couldn't open audio device: No such file or directory
+[20:07:17]
+--- Debug: Full GAME_DATA Contents ---
 {
   "adjectives": [
     "dusty",
@@ -741,7 +747,7 @@
     "The air is thick with the biting scent of ozone and singed rock, a clear indicator of powerful, recently discharged arcane energies that still crackle faintly in the atmosphere.",
     "Veins of shimmering, impossibly smooth crystal run through the rough stone walls, catching the light and refracting it into fleeting, rainbow motes that dance across the chamber.",
     "A chilling, unseen draft whips through the room with a sudden, icy touch, carrying the faint, unsettling whisper of ancient, disembodied voices on its unseen currents.",
-    "A collection of discarded adventurers' gear—a broken shield, a snapped sword, a torn cloak—lies scattered in a desperate heap, painting a grim tableau of a sudden, brutal end.",
+    "A collection of discarded adventurers' gear\u2014a broken shield, a snapped sword, a torn cloak\u2014lies scattered in a desperate heap, painting a grim tableau of a sudden, brutal end.",
     "The floor is covered in a fine, gritty layer of pulverized bone, crunching unnervingly underfoot with every step, a chilling reminder of those who met their end here.",
     "A single, ancient goblet, tarnished silver but intricately engraved, rests untouched on a high, unreachable ledge, glinting faintly, a tantalizing mystery of forgotten lore.",
     "The walls are disturbingly slick with a strange, oily residue that glistens ominously in the dim light, leaving a greasy film on anything it touches, and a sense of unnatural sliminess.",
@@ -1144,11 +1150,11 @@
     "backpack": 0.05,
     "shield": 0.15,
     "armor_body": 0.15,
-    "armor_cloak": 0.10,
-    "armor_helmet": 0.10,
+    "armor_cloak": 0.1,
+    "armor_helmet": 0.1,
     "weapon": 0.15,
     "consumable_healing": 0.25,
-    "consumable_other": 0.10,
+    "consumable_other": 0.1,
     "key": 0.05,
     "default": 0.05
   },
@@ -1920,7 +1926,10 @@
       "name": "Elixir of Strength",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "attack_power", "amount": 2 },
+      "effect_value": {
+        "stat": "attack_power",
+        "amount": 2
+      },
       "description": "A potent elixir that permanently increases your attack power.",
       "shop_price": 250
     },
@@ -1928,7 +1937,10 @@
       "name": "Potion of Power",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "attack_power", "amount": 1 },
+      "effect_value": {
+        "stat": "attack_power",
+        "amount": 1
+      },
       "description": "A shimmering potion that permanently increases your attack power.",
       "shop_price": 150
     },
@@ -1936,7 +1948,10 @@
       "name": "Vitality Draught",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "max_hp", "amount": 10 },
+      "effect_value": {
+        "stat": "max_hp",
+        "amount": 10
+      },
       "description": "A thick, red liquid that permanently increases your maximum HP.",
       "shop_price": 200
     },
@@ -1991,7 +2006,7 @@
     {
       "name": "Chronos Crystal",
       "type": "winning_item",
-      "description": "A crystal that subtly distorts time around it, causing a strange déjà vu."
+      "description": "A crystal that subtly distorts time around it, causing a strange d\u00e9j\u00e0 vu."
     },
     {
       "name": "Blade of Infinite Echoes",
@@ -2519,7 +2534,7 @@
         }
       ]
     },
-	{
+    {
       "name": "Elara, the Collector",
       "type": "quest_giver",
       "description": "A sharp-eyed woman with a satchel full of curiosities.",
@@ -3557,7 +3572,10 @@
       "damage_variance": 3,
       "crit_chance": 0.1,
       "crit_multiplier": 1.5,
-      "gold_drop": [ 50, 100 ],
+      "gold_drop": [
+        50,
+        100
+      ],
       "xp_reward": 100,
       "level": 5,
       "item_drop": "Elixir of Strength"
@@ -3570,7 +3588,10 @@
       "damage_variance": 4,
       "crit_chance": 0.05,
       "crit_multiplier": 1.5,
-      "gold_drop": [ 100, 200 ],
+      "gold_drop": [
+        100,
+        200
+      ],
       "xp_reward": 150,
       "level": 8,
       "item_drop": "Amulet of Protection"
@@ -3854,49 +3875,73 @@
           "type": "buff",
           "weight": 15,
           "message": "You feel a surge of power! Your attacks are strengthened.",
-          "details": { "stat": "attack_power", "modifier": 5, "duration": 50 }
+          "details": {
+            "stat": "attack_power",
+            "modifier": 5,
+            "duration": 50
+          }
         },
         {
           "type": "buff",
           "weight": 15,
           "message": "A shimmering shield materializes around you, bolstering your defense.",
-          "details": { "stat": "defense", "modifier": 5, "duration": 50 }
+          "details": {
+            "stat": "defense",
+            "modifier": 5,
+            "duration": 50
+          }
         },
         {
           "type": "heal",
           "weight": 20,
           "message": "A warm light envelops you, healing some of your wounds.",
-          "details": { "amount": 50 }
+          "details": {
+            "amount": 50
+          }
         },
         {
           "type": "gold",
           "weight": 10,
           "message": "A small pouch of gold magically appears at your feet!",
-          "details": { "amount": 75 }
+          "details": {
+            "amount": 75
+          }
         },
         {
           "type": "curse",
           "weight": 10,
           "message": "You feel a draining presence. Your attacks feel weaker.",
-          "details": { "stat": "attack_power", "modifier": -5, "duration": 50 }
+          "details": {
+            "stat": "attack_power",
+            "modifier": -5,
+            "duration": 50
+          }
         },
         {
           "type": "curse",
           "weight": 10,
           "message": "You feel vulnerable and exposed. Your defense is lowered.",
-          "details": { "stat": "defense", "modifier": -5, "duration": 50 }
+          "details": {
+            "stat": "defense",
+            "modifier": -5,
+            "duration": 50
+          }
         },
         {
           "type": "damage",
           "weight": 10,
           "message": "A bolt of dark energy strikes you from the altar!",
-          "details": { "amount": 30 }
+          "details": {
+            "amount": 30
+          }
         },
         {
           "type": "spawn_monster",
           "weight": 10,
           "message": "The altar trembles and a spectral guardian materializes to punish your hubris!",
-          "details": { "monster_name": "spectral guardian" }
+          "details": {
+            "monster_name": "spectral guardian"
+          }
         }
       ]
     },
@@ -3909,31 +3954,47 @@
           "type": "heal",
           "weight": 40,
           "message": "The water is refreshing and pure. You feel completely revitalized!",
-          "details": { "amount": "full" }
+          "details": {
+            "amount": "full"
+          }
         },
         {
           "type": "buff",
           "weight": 30,
           "message": "The water invigorates you! You feel quicker and more resilient.",
-          "details": { "stat": "defense", "modifier": 3, "duration": 100 }
+          "details": {
+            "stat": "defense",
+            "modifier": 3,
+            "duration": 100
+          }
         },
         {
           "type": "buff",
           "weight": 20,
           "message": "A sense of clarity washes over you. Your critical hit chance increases!",
-          "details": { "stat": "crit_chance", "modifier": 0.1, "duration": 100 }
+          "details": {
+            "stat": "crit_chance",
+            "modifier": 0.1,
+            "duration": 100
+          }
         },
         {
           "type": "curse",
           "weight": 5,
           "message": "The water has a bitter aftertaste. You feel slightly nauseous.",
-          "details": { "stat": "attack_power", "modifier": -2, "duration": 20 }
+          "details": {
+            "stat": "attack_power",
+            "modifier": -2,
+            "duration": 20
+          }
         },
         {
           "type": "spawn_monster",
           "weight": 5,
           "message": "The water turns murky and an acidic ooze slithers out of the fountain!",
-          "details": { "monster_name": "acidic ooze" }
+          "details": {
+            "monster_name": "acidic ooze"
+          }
         }
       ]
     }
@@ -3949,3 +4010,26 @@
     "vendor_music": "sounds/infinitedungeonvendor.wav"
   }
 }
+[20:07:17] --- End Debug: Full GAME_DATA Contents ---
+
+[20:07:17]
+--- Debug: Initial Key Data Load Check (Summary) ---
+[20:07:17]     Loaded Key: rusty key | shop_price: 20
+[20:07:17]     Loaded Key: silver key | shop_price: 30
+[20:07:17]     Loaded Key: bone key | shop_price: 10
+[20:07:17] --- End Debug: Initial Key Data Load Check ---
+
+[20:07:17] Loaded 329 adjectives.
+[20:07:17] Loaded 395 room types.
+[20:07:17] Loaded 411 details.
+[20:07:17] Loaded 133 items.
+[20:07:17] Identified 10 winning items.
+[20:07:17] Loaded 41 NPCs.
+[20:07:17] Loaded 32 hazards.
+[20:07:17] Loaded 53 monsters.
+[20:07:17] Loaded 4 puzzles.
+[20:07:17] Loaded 10 quests.
+[20:07:17] Loaded 2 shrines.
+[20:07:17] Loaded item spawn weights: {"backpack": 0.05, "shield": 0.15, "armor_body": 0.15, "armor_cloak": 0.1, "armor_helmet": 0.1, "weapon": 0.15, "consumable_healing": 0.25, "consumable_other": 0.1, "key": 0.05, "default": 0.05}
+[20:07:17]
+--- Debug Log Ended ---

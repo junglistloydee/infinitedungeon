@@ -908,6 +908,74 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     # MODIFIED: Added equipped_cloak, equipped_misc_items, and player_attack_bonus to returned values
     return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
 
+def handle_gambler(player_gold, gambler_data):
+    """
+    Manages the gambling interaction with a Gambler NPC.
+    Returns updated player_gold.
+    """
+    gambler_name = gambler_data.get('name', 'the Gambler')
+    print(f"\n--- {gambler_name}'s Game of Chance ---")
+    print(f"'{random.choice(gambler_data.get('dialogues', ['Care to try your luck?']))}'")
+
+    while True:
+        print(f"\nYour Gold: {player_gold}")
+        print("Gambling commands: bet [amount] / leave")
+
+        command_input = input("Gambler Action> ").lower().strip()
+        parts = command_input.split()
+
+        if not parts:
+            continue
+
+        verb = parts[0]
+
+        if verb == "leave":
+            print(f"'{random.choice(['Come back when you feel lucky!', 'May fortune favor you.'])}'")
+            break
+
+        elif verb == "bet":
+            if len(parts) < 2 or not parts[1].isdigit():
+                print("Invalid bet. Please enter a number. (e.g., 'bet 50')")
+                continue
+
+            bet_amount = int(parts[1])
+
+            if bet_amount <= 0:
+                print("You must bet a positive amount of gold.")
+                continue
+
+            if bet_amount > player_gold:
+                print("You don't have enough gold for that bet.")
+                continue
+
+            print(f"You bet {bet_amount} gold.")
+            player_gold -= bet_amount
+
+            # Simulate dice rolls
+            player_roll = random.randint(1, 6) + random.randint(1, 6)
+            gambler_roll = random.randint(1, 6) + random.randint(1, 6)
+
+            print("The dice are rolling...")
+            time.sleep(1)
+            print(f"You rolled a {player_roll}.")
+            time.sleep(0.5)
+            print(f"The Gambler rolled a {gambler_roll}.")
+
+            if player_roll > gambler_roll:
+                winnings = bet_amount * 2
+                player_gold += winnings
+                print(f"You win! You receive {winnings} gold.")
+            elif gambler_roll > player_roll:
+                print("You lose! The Gambler takes your bet.")
+            else:
+                player_gold += bet_amount
+                print("It's a draw! Your bet is returned.")
+
+        else:
+            print("Invalid command. Type 'bet [amount]' or 'leave'.")
+
+    return player_gold
+
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
 def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager, equipped_misc_items):
     """
@@ -2811,6 +2879,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     if current_room.npc.get('type') == 'vendor':
                         player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain, equipped_misc_items = \
                             handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, current_room.npc, player_keychain, player_level, sound_manager, equipped_misc_items)
+                    elif current_room.npc.get('type') == 'gambler':
+                        player_gold = handle_gambler(player_gold, current_room.npc)
             else:
                 print("There's no one here to talk to.")
 
