@@ -1145,6 +1145,7 @@
     "shield": 0.15,
     "armor_body": 0.15,
     "armor_cloak": 0.10,
+    "armor_helmet": 0.10,
     "weapon": 0.15,
     "consumable_healing": 0.25,
     "consumable_other": 0.10,
@@ -1996,6 +1997,30 @@
       "name": "Blade of Infinite Echoes",
       "type": "winning_item",
       "description": "A sword that hums with the memory of every blow it has ever struck."
+    },
+    {
+      "name": "Vampiric Blade",
+      "type": "weapon",
+      "damage": 25,
+      "description": "A powerful blade that seems to pulse with a life of its own. It feels warm to the touch.",
+      "shop_price": 150,
+      "cursed": true,
+      "curse_effect": {
+        "hp_drain": 5
+      }
+    },
+    {
+      "name": "Helm of Greed",
+      "type": "armor",
+      "subtype": "helmet",
+      "defense": 2,
+      "description": "A golden helm that glitters enticingly. You feel a strange desire to hoard treasure while wearing it.",
+      "shop_price": 200,
+      "cursed": true,
+      "curse_effect": {
+        "defense": -5,
+        "gold_find": 2.0
+      }
     }
   ],
   "npcs": [
