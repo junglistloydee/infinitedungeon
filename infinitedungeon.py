@@ -426,6 +426,26 @@ def recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items,
     return player_attack_power
 
 
+def calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet):
+    """Calculates total defense, including penalties from cursed items."""
+    total_defense = 0
+
+    # List of all equipped armor items
+    equipped_gear = [player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet]
+
+    for item in equipped_gear:
+        if item:
+            # Add base defense
+            total_defense += item.get('defense', 0)
+            # Apply curse effect if present
+            if item.get('cursed'):
+                curse_effect = item.get('curse_effect', {})
+                if 'defense' in curse_effect:
+                    total_defense += curse_effect['defense']
+
+    return max(0, total_defense) # Defense cannot be negative
+
+
 def scale_item_for_player_level(item, player_level):
     """
     Scales an item's stats and name based on the player's level.
@@ -463,13 +483,16 @@ def scale_item_for_player_level(item, player_level):
 
 
 # NEW: Dedicated function for equipping items
-def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level):
+def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level, equipped_helmet):
     """
     Handles the logic of equipping an item and returns the updated equipment state.
     """
     item_type = item_to_equip.get('type')
 
     if item_type == 'shield':
+        if player_shield_value and player_shield_value.get('cursed'):
+            print(f"Your {player_shield_value['name']} is cursed! You cannot unequip it.")
+            return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet
         item_defense = item_to_equip.get('defense', 0)
         current_shield_defense = player_shield_value.get('defense', 0) if player_shield_value else 0
         if item_to_equip is player_shield_value:
@@ -486,6 +509,9 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
             item_subtype = 'body_armor'
 
         if item_subtype == 'body_armor':
+            if equipped_armor_value and equipped_armor_value.get('cursed'):
+                print(f"Your {equipped_armor_value['name']} is cursed! You cannot unequip it.")
+                return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet
             item_defense = item_to_equip.get('defense', 0)
             current_armor_defense = equipped_armor_value.get('defense', 0) if equipped_armor_value else 0
             if item_to_equip is equipped_armor_value:
@@ -496,6 +522,9 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
             else:
                 print(f"You already have body armor ({equipped_armor_value['name']}) providing {current_armor_defense} defense, which is better than {add_article(item_to_equip['name'])}'s {item_defense} defense.")
         elif item_subtype == 'cloak':
+            if equipped_cloak and equipped_cloak.get('cursed'):
+                print(f"Your {equipped_cloak['name']} is cursed! You cannot unequip it.")
+                return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet
             item_defense = item_to_equip.get('defense', 0)
             current_cloak_defense = equipped_cloak.get('defense', 0) if equipped_cloak else 0
             if item_to_equip is equipped_cloak:
@@ -505,10 +534,26 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
                 print(f"You equip {add_article(item_to_equip['name'])}. Your **cloak defense** is now {equipped_cloak.get('defense',0)}.")
             else:
                 print(f"You already have a cloak ({equipped_cloak['name']}) providing {current_cloak_defense} defense, which is better than {add_article(item_to_equip['name'])}'s {item_defense} defense.")
+        elif item_subtype == 'helmet':
+            if equipped_helmet and equipped_helmet.get('cursed'):
+                print(f"Your {equipped_helmet['name']} is cursed! You cannot unequip it.")
+                return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet
+            item_defense = item_to_equip.get('defense', 0)
+            current_helmet_defense = equipped_helmet.get('defense', 0) if equipped_helmet else 0
+            if item_to_equip is equipped_helmet:
+                print(f"You already have {add_article(item_to_equip['name'])} equipped as a helmet.")
+            elif item_defense >= current_helmet_defense:
+                equipped_helmet = item_to_equip
+                print(f"You equip {add_article(item_to_equip['name'])}. Your **helmet defense** is now {equipped_helmet.get('defense',0)}.")
+            else:
+                print(f"You already have a helmet ({equipped_helmet['name']}) providing {current_helmet_defense} defense, which is better than {add_article(item_to_equip['name'])}'s {item_defense} defense.")
         else:
             print(f"You can't equip {add_article(item_to_equip['name'])} as an armor of unknown subtype.")
 
     elif item_type == 'weapon':
+        if equipped_weapon and equipped_weapon.get('cursed'):
+            print(f"Your {equipped_weapon['name']} is cursed! You cannot unequip it.")
+            return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet
         new_weapon_damage = item_to_equip.get('damage', 0)
         current_weapon_damage = equipped_weapon.get('damage', 0) if equipped_weapon else 0
 
@@ -528,11 +573,11 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
             equipped_misc_items.append(item_to_equip)
             print(f"You equip {add_article(item_to_equip['name'])}.")
 
-    return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+    return player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet
 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet):
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
@@ -552,9 +597,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
 
     # Defense values are now from the equipped item dictionaries
     # MODIFIED: Include equipped_cloak in total_player_defense calculation
-    total_player_defense = (player_shield_value.get('defense', 0) if player_shield_value else 0) + \
-                           (equipped_armor_value.get('defense', 0) if equipped_armor_value else 0) + \
-                           (equipped_cloak.get('defense', 0) if equipped_cloak else 0) + current_defense_bonus
+    total_player_defense = calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet) + current_defense_bonus
 
     sound_manager.stop_music()
     sound_manager.play_music('combat_music')
@@ -580,6 +623,13 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
         action_taken = False
 
         if verb == "attack":
+            if equipped_weapon and equipped_weapon.get('cursed') and equipped_weapon.get('curse_effect', {}).get('hp_drain'):
+                drain_amount = equipped_weapon['curse_effect']['hp_drain']
+                player_hp -= drain_amount
+                print(f"Your {equipped_weapon['name']} drains {drain_amount} HP from you!")
+                if player_hp <= 0:
+                    print("You have been drained of your life force!")
+                    break
             base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
 
             is_crit = False
@@ -599,6 +649,9 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             if monster_current_hp <= 0:
                 print(f"The {monster_name} collapses, defeated!")
                 gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
+                if equipped_helmet and equipped_helmet.get('cursed') and equipped_helmet.get('curse_effect', {}).get('gold_find'):
+                    gold_gained = int(gold_gained * equipped_helmet['curse_effect']['gold_find'])
+                    print(f"Your {equipped_helmet['name']} doubles the gold dropped!")
                 print(f"You gained {gold_gained} gold from defeating the {monster_name}!")
 
                 player_xp += monster_xp_reward
@@ -789,7 +842,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                 # MODIFIED: Display cloak defense
                 print(f"Current Cloak Defense: {equipped_cloak.get('defense', 0) if equipped_cloak else 0}")
                 # MODIFIED: Update total defense calculation in display
-                print(f"Total Defense: {(player_shield_value.get('defense', 0) if player_shield_value else 0) + (equipped_armor_value.get('defense', 0) if equipped_armor_value else 0) + (equipped_cloak.get('defense', 0) if equipped_cloak else 0)}")
+                print(f"Total Defense: {calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet)}")
                 print(f"Attack Power: {player_attack_power} (+/-{player_attack_variance})")
                 print(f"Critical Chance: {player_crit_chance*100:.0f}% (x{player_crit_multiplier:.1f} Damage)")
                 if equipped_weapon:
@@ -1689,12 +1742,14 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
     """
     global special_event_after_unlock
+    current_defense_bonus = 0
+    current_crit_chance_bonus = 0.0
     # Helper function to process puzzle rewards
     def process_puzzle_rewards(puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
         rewards_data = puzzle.get('rewards', {})
@@ -1819,7 +1874,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet)
         player_gold += gold_gained
         if player_hp <= 0:
             print("\n" + "=" * 40)
@@ -2141,7 +2196,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                         handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet)
                     player_gold += gold_gained
                     if player_hp <= 0:
                         print("\n" + "=" * 40)
@@ -2227,7 +2282,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet)
                         player_gold += gold_gained
                         if player_hp <= 0:
                             print("\n" + "=" * 40)
@@ -2442,8 +2497,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     break
 
             if item_found_in_inventory:
-                player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
-                    handle_equip_item(item_found_in_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level)
+                player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet = \
+                    handle_equip_item(item_found_in_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level, equipped_helmet)
                 player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
                 print(f"Your attack power is now {player_attack_power}.")
             else:
@@ -2461,33 +2516,57 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
             # Check weapon
             if equipped_weapon and equipped_weapon['name'].lower() == item_to_unequip_name_input:
-                print(f"You unequip your {equipped_weapon['name']}.")
-                equipped_weapon = None
+                if equipped_weapon.get('cursed'):
+                    print(f"Your {equipped_weapon['name']} is cursed! You cannot unequip it.")
+                else:
+                    print(f"You unequip your {equipped_weapon['name']}.")
+                    equipped_weapon = None
                 item_unequipped = True
 
             # Check shield
             elif player_shield_value and player_shield_value['name'].lower() == item_to_unequip_name_input:
-                print(f"You unequip your {player_shield_value['name']}.")
-                player_shield_value = None
+                if player_shield_value.get('cursed'):
+                    print(f"Your {player_shield_value['name']} is cursed! You cannot unequip it.")
+                else:
+                    print(f"You unequip your {player_shield_value['name']}.")
+                    player_shield_value = None
                 item_unequipped = True
 
             # Check body armor
             elif equipped_armor_value and equipped_armor_value['name'].lower() == item_to_unequip_name_input:
-                print(f"You unequip your {equipped_armor_value['name']}.")
-                equipped_armor_value = None
+                if equipped_armor_value.get('cursed'):
+                    print(f"Your {equipped_armor_value['name']} is cursed! You cannot unequip it.")
+                else:
+                    print(f"You unequip your {equipped_armor_value['name']}.")
+                    equipped_armor_value = None
                 item_unequipped = True
 
             # Check cloak
             elif equipped_cloak and equipped_cloak['name'].lower() == item_to_unequip_name_input:
-                print(f"You unequip your {equipped_cloak['name']}.")
-                equipped_cloak = None
+                if equipped_cloak.get('cursed'):
+                    print(f"Your {equipped_cloak['name']} is cursed! You cannot unequip it.")
+                else:
+                    print(f"You unequip your {equipped_cloak['name']}.")
+                    equipped_cloak = None
+                item_unequipped = True
+
+            # Check helmet
+            elif equipped_helmet and equipped_helmet['name'].lower() == item_to_unequip_name_input:
+                if equipped_helmet.get('cursed'):
+                    print(f"Your {equipped_helmet['name']} is cursed! You cannot unequip it.")
+                else:
+                    print(f"You unequip your {equipped_helmet['name']}.")
+                    equipped_helmet = None
                 item_unequipped = True
 
             else:
                 for item in equipped_misc_items:
                     if item['name'].lower() == item_to_unequip_name_input:
-                        print(f"You unequip your {item['name']}.")
-                        equipped_misc_items.remove(item)
+                        if item.get('cursed'):
+                            print(f"Your {item['name']} is cursed! You cannot unequip it.")
+                        else:
+                            print(f"You unequip your {item['name']}.")
+                            equipped_misc_items.remove(item)
                         item_unequipped = True
                         break
 
@@ -2505,7 +2584,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                     handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                   current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet)
                 player_gold += gold_gained
                 if player_hp <= 0:
                     print("\n" + "=" * 40)
@@ -2849,7 +2928,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, sound_manager, equipped_helmet)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -3122,7 +3201,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                             current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                            player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -3165,6 +3244,7 @@ def main():
             player_shield_value = None
             equipped_armor_value = None
             equipped_cloak = None # NEW: Initialize equipped_cloak
+            equipped_helmet = None
             equipped_weapon = None
             player_xp = 0
             player_level = 1
@@ -3217,6 +3297,7 @@ def main():
                 player_inventory.append(copy.deepcopy(healing_potion_def))
                 print(f"You also have 2 {healing_potion_def['name']}s.")
 
+
             print(f"You can carry a maximum of {current_max_inventory_slots} items in your inventory.")
             rooms_travelled = 1
 
@@ -3224,7 +3305,7 @@ def main():
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
-                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager) # Pass keychain and bonus
+                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet) # Pass keychain and bonus
 
                 if game_result == 'continue_adventure':
                     # Player chose to continue after main objective.
