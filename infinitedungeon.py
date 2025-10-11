@@ -3562,7 +3562,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         elif verb == "save":
             # MODIFIED: Added equipped_cloak and player_attack_bonus to save_game parameters
-            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, room_history, direction_history) # Pass keychain and bonus
+            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history) # Pass keychain and bonus
 
         elif verb == "ohvendor":
             guvna_npc_def = next((n for n in NPCs if n.get('name') == 'Stranger' and n.get('type') == 'vendor'), None)
