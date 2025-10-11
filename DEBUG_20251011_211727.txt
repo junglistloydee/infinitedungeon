@@ -1,12 +1,12 @@
---- Debug Log Started: 2025-10-11 20:06:28.393698 ---
+--- Debug Log Started: 2025-10-11 21:17:27.789551 ---
 
-[20:06:28] Debug log opened: DEBUG_20251011_200628.txt
-[20:06:28] Pygame mixer initialized successfully.
-[20:06:28] Loaded music playlist: ambient_music -> ['/app/sounds/infinitedungeonambience.wav', '/app/sounds/infinitedungeonambience2.wav', '/app/sounds/infinitedungeonambience3.wav']
-[20:06:28] Loaded sound: combat_music -> /app/sounds/infinitedungeoncombat.wav
-[20:06:28] Loaded sound: inn_music -> /app/sounds/infinitedungeoninn.wav
-[20:06:28] Loaded sound: vendor_music -> /app/sounds/infinitedungeonvendor.wav
-[20:06:28]
+[21:17:27] Debug log opened: DEBUG_20251011_211727.txt
+[21:17:27] Pygame mixer initialized successfully.
+[21:17:27] Loaded music playlist: ambient_music -> ['/app/sounds/infinitedungeonambience.wav', '/app/sounds/infinitedungeonambience2.wav', '/app/sounds/infinitedungeonambience3.wav']
+[21:17:27] Loaded sound: combat_music -> /app/sounds/infinitedungeoncombat.wav
+[21:17:27] Loaded sound: inn_music -> /app/sounds/infinitedungeoninn.wav
+[21:17:27] Loaded sound: vendor_music -> /app/sounds/infinitedungeonvendor.wav
+[21:17:27]
 --- Debug: Full GAME_DATA Contents ---
 {
   "adjectives": [
@@ -4198,42 +4198,223 @@
         4
       ]
     }
-  ]
+  ],
+  "character_classes": {
+    "Reaver": {
+      "description": "A fierce warrior who thrives in the heat of battle, using rage and powerful swings to crush their enemies.",
+      "starting_stats": {
+        "max_hp": 120,
+        "attack_power": 12,
+        "attack_variance": 3,
+        "crit_chance": 0.15,
+        "crit_multiplier": 1.6
+      },
+      "starting_equipment": [
+        "battle-worn axe",
+        "wooden shield",
+        "leather jerkin"
+      ],
+      "skill_tree": [
+        {
+          "name": "Power Strike",
+          "description": "A powerful attack that deals 50% extra damage.",
+          "level_unlocked": 2,
+          "effect": {
+            "type": "damage_boost",
+            "value": 1.5
+          }
+        },
+        {
+          "name": "War Cry",
+          "description": "A terrifying shout that has a 30% chance to stun all enemies in the room for 1 turn.",
+          "level_unlocked": 4,
+          "effect": {
+            "type": "stun",
+            "chance": 0.3
+          }
+        },
+        {
+          "name": "Berserker's Rage",
+          "description": "Increases your attack power by 10 for 5 turns.",
+          "level_unlocked": 6,
+          "effect": {
+            "type": "stat_buff",
+            "stat": "attack_power",
+            "value": 10,
+            "duration": 5
+          }
+        }
+      ]
+    },
+    "Whisper": {
+      "description": "A master of shadows and subtlety, the Whisper excels at exploiting enemy weaknesses and striking from the darkness.",
+      "starting_stats": {
+        "max_hp": 90,
+        "attack_power": 9,
+        "attack_variance": 2,
+        "crit_chance": 0.25,
+        "crit_multiplier": 2.0
+      },
+      "starting_equipment": [
+        "poisoned dagger",
+        "hooded cloak"
+      ],
+      "skill_tree": [
+        {
+          "name": "Shadow Strike",
+          "description": "A guaranteed critical hit.",
+          "level_unlocked": 2,
+          "effect": {
+            "type": "guaranteed_crit"
+          }
+        },
+        {
+          "name": "Venomous Blades",
+          "description": "Poisons the enemy, dealing 10 damage per turn for 3 turns.",
+          "level_unlocked": 4,
+          "effect": {
+            "type": "poison",
+            "damage": 10,
+            "duration": 3
+          }
+        },
+        {
+          "name": "Evasion",
+          "description": "Increases your chance to dodge attacks by 50% for 3 turns.",
+          "level_unlocked": 6,
+          "effect": {
+            "type": "dodge_buff",
+            "value": 0.5,
+            "duration": 3
+          }
+        }
+      ]
+    },
+    "Prodigy": {
+      "description": "A gifted sorcerer who commands the elements, unleashing devastating spells from a distance.",
+      "starting_stats": {
+        "max_hp": 80,
+        "attack_power": 15,
+        "attack_variance": 5,
+        "crit_chance": 0.1,
+        "crit_multiplier": 1.8
+      },
+      "starting_equipment": [
+        "ancient staff",
+        "shimmering cloak"
+      ],
+      "skill_tree": [
+        {
+          "name": "Fireball",
+          "description": "Launches a fiery projectile that deals 30 area-of-effect damage to all enemies.",
+          "level_unlocked": 2,
+          "effect": {
+            "type": "aoe_damage",
+            "damage": 30
+          }
+        },
+        {
+          "name": "Ice Shard",
+          "description": "A shard of ice that has a 50% chance to freeze an enemy for 1 turn.",
+          "level_unlocked": 4,
+          "effect": {
+            "type": "freeze",
+            "chance": 0.5
+          }
+        },
+        {
+          "name": "Arcane Shield",
+          "description": "Creates a magical barrier that absorbs 50 damage.",
+          "level_unlocked": 6,
+          "effect": {
+            "type": "shield",
+            "value": 50
+          }
+        }
+      ]
+    },
+    "Oracle": {
+      "description": "A divine healer who channels celestial energy to protect and mend, all while smiting the unholy.",
+      "starting_stats": {
+        "max_hp": 100,
+        "attack_power": 10,
+        "attack_variance": 2,
+        "crit_chance": 0.1,
+        "crit_multiplier": 1.5
+      },
+      "starting_equipment": [
+        "heavy iron mace",
+        "gleaming shield"
+      ],
+      "skill_tree": [
+        {
+          "name": "Holy Light",
+          "description": "Heals you for 50 HP.",
+          "level_unlocked": 2,
+          "effect": {
+            "type": "heal",
+            "value": 50
+          }
+        },
+        {
+          "name": "Smite",
+          "description": "A divine strike that deals double damage to undead enemies.",
+          "level_unlocked": 4,
+          "effect": {
+            "type": "damage_modifier",
+            "multiplier": 2,
+            "target": "undead"
+          }
+        },
+        {
+          "name": "Blessing of Protection",
+          "description": "Increases your defense by 10 for 5 turns.",
+          "level_unlocked": 6,
+          "effect": {
+            "type": "stat_buff",
+            "stat": "defense",
+            "value": 10,
+            "duration": 5
+          }
+        }
+      ]
+    }
+  }
 }
-[20:06:28] --- End Debug: Full GAME_DATA Contents ---
+[21:17:27] --- End Debug: Full GAME_DATA Contents ---
 
-[20:06:28]
+[21:17:27]
 --- Debug: Initial Key Data Load Check (Summary) ---
-[20:06:28]     Loaded Key: rusty key | shop_price: 20
-[20:06:28]     Loaded Key: silver key | shop_price: 30
-[20:06:28]     Loaded Key: bone key | shop_price: 10
-[20:06:28] --- End Debug: Initial Key Data Load Check ---
+[21:17:27]     Loaded Key: rusty key | shop_price: 20
+[21:17:27]     Loaded Key: silver key | shop_price: 30
+[21:17:27]     Loaded Key: bone key | shop_price: 10
+[21:17:27] --- End Debug: Initial Key Data Load Check ---
 
-[20:06:28] Loaded 329 adjectives.
-[20:06:28] Loaded 396 room types.
-[20:06:28] Loaded 411 details.
-[20:06:28] Loaded 138 items.
-[20:06:28] Identified 10 winning items.
-[20:06:28] Loaded 41 NPCs.
-[20:06:28] Loaded 37 hazards.
-[20:06:28] Loaded 54 monsters.
-[20:06:28] Loaded 4 puzzles.
-[20:06:28] Loaded 10 quests.
-[20:06:28] Loaded 2 shrines.
-[20:06:28] Loaded 3 hordes.
-[20:06:28] Loaded item spawn weights: {"backpack": 0.05, "shield": 0.15, "armor_body": 0.15, "armor_cloak": 0.1, "armor_helmet": 0.1, "weapon": 0.15, "consumable_healing": 0.25, "consumable_other": 0.1, "key": 0.05, "default": 0.05}
-[20:06:28] Music stopped.
-[20:06:28] Error playing music ambient_music: Unknown WAVE format
-[20:06:28]
+[21:17:27] Loaded 329 adjectives.
+[21:17:27] Loaded 396 room types.
+[21:17:27] Loaded 411 details.
+[21:17:27] Loaded 138 items.
+[21:17:27] Identified 10 winning items.
+[21:17:27] Loaded 41 NPCs.
+[21:17:27] Loaded 37 hazards.
+[21:17:27] Loaded 54 monsters.
+[21:17:27] Loaded 4 puzzles.
+[21:17:27] Loaded 10 quests.
+[21:17:27] Loaded 2 shrines.
+[21:17:27] Loaded 3 hordes.
+[21:17:27] Loaded item spawn weights: {"backpack": 0.05, "shield": 0.15, "armor_body": 0.15, "armor_cloak": 0.1, "armor_helmet": 0.1, "weapon": 0.15, "consumable_healing": 0.25, "consumable_other": 0.1, "key": 0.05, "default": 0.05}
+[21:17:27] Music stopped.
+[21:17:27] Error playing music ambient_music: Unknown WAVE format
+[21:17:27]
 --- Debug: Player State at Room Entry ---
-[20:06:28]     Gold: 75
-[20:06:28]     Inventory (3/5):
-[20:06:28]         - wooden sword (Type: weapon, Price: 5)
-[20:06:28]         - healing potion (Type: consumable, Price: 30)
-[20:06:28]         - healing potion (Type: consumable, Price: 30)
-[20:06:28]     Keychain:
-[20:06:28]         (Empty)
-[20:06:28] --- End Debug: Player Data ---
+[21:17:27]     Gold: 75
+[21:17:27]     Inventory (3/5):
+[21:17:27]         - battle-worn axe (Type: weapon, Price: 20)
+[21:17:27]         - wooden shield (Type: shield, Price: 10)
+[21:17:27]         - leather jerkin (Type: armor, Price: 15)
+[21:17:27]     Keychain:
+[21:17:27]         (Empty)
+[21:17:27] --- End Debug: Player Data ---
 
-[20:06:28]
+[21:17:27]
 --- Debug Log Ended ---
