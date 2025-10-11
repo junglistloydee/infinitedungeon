@@ -114,8 +114,9 @@ MAIN_SCREEN_TEXT = """
 =======================================
 =       1. Start New Game             =
 =       2. Load Game                  =
-=       3. Credits                    =
-=       4. Quit                       =
+=       3. Adventurer's Guild         =
+=       4. Credits                    =
+=       5. Quit                       =
 =======================================
 """
 
@@ -1098,6 +1099,7 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
     horde_name = horde_data['name']
     horde_monsters = horde_data['monsters']
     horde_size = random.randint(horde_data['size'][0], horde_data['size'][1])
+    monsters_defeated_in_horde = 0
 
     print(f"\nA horde of {horde_size} monsters appears! It's a {horde_name}!")
 
@@ -1120,8 +1122,10 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
                           player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet)
 
         if player_hp <= 0:
-            return 'lose', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+            return 'lose', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde
 
+        if monster_data is None:
+            monsters_defeated_in_horde += 1
         total_gold_gained += gold_gained
         total_xp_gained += monster_def.get('xp_reward', 0)
 
@@ -1147,7 +1151,7 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
             else:
                 print("You would have received a special item, but your inventory is full!")
 
-    return 'continue', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+    return 'continue', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
 def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager, equipped_misc_items):
@@ -1656,6 +1660,31 @@ def load_game():
         return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 
+# --- Meta-Progression Functions ---
+def load_meta_progress():
+    """Loads the meta-progression data from 'metaprogress.json'."""
+    try:
+        with open('metaprogress.json', 'r') as f:
+            meta_progress = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        meta_progress = {
+            "soul_shards": 0,
+            "upgrades": {
+                "max_hp": 0
+            }
+        }
+    return meta_progress
+
+def save_meta_progress(meta_progress):
+    """Saves the meta-progression data to 'metaprogress.json'."""
+    try:
+        with open('metaprogress.json', 'w') as f:
+            json.dump(meta_progress, f, indent=4)
+        print("Meta-progression saved.")
+    except IOError:
+        print("Error: Could not save meta-progression. Check file permissions.")
+
+
 # --- Classes ---
 
 class Room:
@@ -1995,7 +2024,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, monsters_defeated_this_run):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -2087,10 +2116,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 
     if current_room.is_horde_room:
-        game_result, player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+        game_result, player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde = \
             handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet)
+        monsters_defeated_this_run += monsters_defeated_in_horde
         if game_result == 'lose':
-            return 'lose'
+            return 'lose', monsters_defeated_this_run, rooms_travelled
     # Handle immediate hazard upon entering room
     if current_room.hazard and not current_room.hazard.get('is_currently_hidden', False):
         print(current_room.hazard['effect_message'].format(damage=current_room.hazard['damage']))
@@ -2110,7 +2140,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("=" * 40)
             if DEBUG: # Wrapped debug calls
                 debug.close_debug_log() # Close log on game over
-            return 'lose' # Game over, return 'lose'
+            return 'lose', monsters_defeated_this_run, rooms_travelled # Game over, return 'lose'
 
     # Winning item pre-combat interaction
     # If a winning item spawned AND the boss hasn't spawned yet, prompt player to pick it up.
@@ -2128,6 +2158,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
     # Handle regular monster combat (if present and not a winning item guardian)
     if current_room.monster and not current_room.monster.get('is_boss_guardian', False): # For regular monsters
+        monster_was_defeated = current_room.monster is not None
         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
                 player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
@@ -2141,8 +2172,9 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("=" * 40)
             if DEBUG: # Wrapped debug calls
                 debug.close_debug_log() # Close log on game over
-            return 'lose' # Game over, return 'lose'
-        if current_room.monster is None:
+            return 'lose', monsters_defeated_this_run, rooms_travelled
+        if monster_was_defeated and current_room.monster is None:
+            monsters_defeated_this_run += 1
             print(f"\nThe monster is defeated. The room is now safe.")
             display_room_content_summary(current_room, rooms_travelled)
 
@@ -2191,7 +2223,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("Thanks for playing!")
             if DEBUG: # Wrapped debug calls
                 debug.close_debug_log() # Close log before quitting
-            return 'quit' # Exit the main menu loop as well
+            return 'quit', monsters_defeated_this_run, rooms_travelled
 
         elif verb == "help":
             print("\nAvailable commands:")
@@ -3545,14 +3577,18 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 def main():
     """The main function to run the game."""
+    meta_progress = load_meta_progress()
     while True: # This loop keeps the main menu active
+        monsters_defeated_this_run = 0
         print(MAIN_SCREEN_TEXT)
         main_menu_choice = input("Enter your choice: ").strip()
 
         if main_menu_choice == '1':
             # Initialize player stats for a New Game
-            player_hp = 100
-            max_hp = 100
+            hp_upgrade_level = meta_progress['upgrades'].get('max_hp', 0)
+            hp_bonus = hp_upgrade_level * 5
+            player_hp = 100 + hp_bonus
+            max_hp = 100 + hp_bonus
             player_attack_power = BASE_PLAYER_ATTACK_POWER
             player_attack_bonus = 0 # NEW: For permanent stat boosts from items
             player_attack_variance = BASE_PLAYER_ATTACK_VARIANCE
@@ -3619,13 +3655,21 @@ def main():
 
             print(f"You can carry a maximum of {current_max_inventory_slots} items in your inventory.")
             rooms_travelled = 1
+            initial_rooms_travelled = 1
+
 
             # This inner loop now allows the player to continue their adventure
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
-                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet) # Pass keychain and bonus
+                game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, monsters_defeated_this_run) # Pass keychain and bonus
 
+                rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
+                shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
+                if shards_earned > 0:
+                    print(f"\nYou earned {shards_earned} Soul Shards for your efforts.")
+                    meta_progress['soul_shards'] += shards_earned
+                    save_meta_progress(meta_progress)
                 if game_result == 'continue_adventure':
                     # Player chose to continue after main objective.
                     # Generate a new room, heal, increment rooms travelled, and continue.
@@ -3671,6 +3715,8 @@ def main():
                         room_history = []
                         direction_history = []
                         current_room = Room(player_level, player_quests) # New first room
+                        monsters_defeated_this_run = 0
+                        initial_rooms_travelled = 1
 
                         # Re-add starting items
                         wooden_sword_def = get_item_by_name('wooden sword')
@@ -3690,7 +3736,8 @@ def main():
                     else:
                         break # Break from the inner loop to return to the main menu
                 else: # game_result == 'quit'
-                    break # Break from the inner loop (and will also break the outer loop) to exit the program
+                    return # Exit the main function
+
 
         elif main_menu_choice == '2':
             # Load Game
@@ -3700,6 +3747,8 @@ def main():
 
             print("=" * 40)
             if loaded_hp is not None:
+                initial_rooms_travelled = loaded_rooms_travelled
+                monsters_defeated_this_run = 0
                 # Assign loaded values to game variables
                 player_hp = loaded_hp
                 max_hp = loaded_max_hp
@@ -3782,7 +3831,14 @@ def main():
                         current_room = Room(player_level, player_quests) # Generate a new room
                     # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager) # Pass keychain
+                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, monsters_defeated_this_run) # Pass keychain
+
+                    rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
+                    shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
+                    if shards_earned > 0:
+                        print(f"\nYou earned {shards_earned} Soul Shards for your efforts.")
+                        meta_progress['soul_shards'] += shards_earned
+                        save_meta_progress(meta_progress)
 
                     if game_result == 'continue_adventure':
                         current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
@@ -3812,20 +3868,58 @@ def main():
                         else:
                             break # Break from the inner loop to return to the main menu
                     else: # game_result == 'quit'
-                        break # Break from the inner loop (and will also break the outer loop) to exit the program
+                        return
+
+
             else:
                 continue # No save game found, stay in main menu
 
         elif main_menu_choice == '3':
+            handle_adventurers_guild(meta_progress)
+            continue
+
+        elif main_menu_choice == '4':
             print(CREDITS_TEXT)
             input("Press Enter to continue...")
             continue
 
-        elif main_menu_choice == '4':
+        elif main_menu_choice == '5':
             print("Thanks for playing!")
             if DEBUG: # Wrapped debug calls
                 debug.close_debug_log() # Close log before final exit from main menu
             break # Exit the main menu loop, ending the program
+
+def handle_adventurers_guild(meta_progress):
+    """Handles the Adventurer's Guild hub."""
+    while True:
+        print("\n--- Adventurer's Guild ---")
+        print(f"You have {meta_progress['soul_shards']} Soul Shards.")
+
+        # HP Upgrade
+        hp_upgrade_level = meta_progress['upgrades'].get('max_hp', 0)
+        hp_upgrade_cost = 50 * (hp_upgrade_level + 1)
+        print(f"\n1. Upgrade Max HP (+5 HP per level)")
+        print(f"   Current Level: {hp_upgrade_level}")
+        print(f"   Next Level Cost: {hp_upgrade_cost} Soul Shards")
+
+        print("\nb. Back to main menu")
+
+        choice = input("Enter your choice: ").lower().strip()
+
+        if choice == '1':
+            if meta_progress['soul_shards'] >= hp_upgrade_cost:
+                meta_progress['soul_shards'] -= hp_upgrade_cost
+                meta_progress['upgrades']['max_hp'] += 1
+                save_meta_progress(meta_progress)
+                print(f"You have successfully upgraded your Max HP. Current level: {meta_progress['upgrades']['max_hp']}")
+            else:
+                print("You don't have enough Soul Shards for this upgrade.")
+            input("Press Enter to continue...")
+        elif choice == 'b':
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
 # --- Start the game ---
 if __name__ == "__main__":
     try:
