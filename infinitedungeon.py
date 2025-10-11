@@ -356,6 +356,14 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
             print(f"You consume {add_article(item_to_use['name'])}. It tastes... unique. (This takes your turn.)")
             player_inventory.remove(item_to_use)
             action_consumed_turn = True
+        elif effect_type == 'perception_boost':
+            if not in_combat:
+                stat_changes['perception_boost'] = True
+                print(f"You drink the {item_to_use['name']} and feel your senses sharpen.")
+                player_inventory.remove(item_to_use)
+                action_consumed_turn = True
+            else:
+                print("You can't drink this in the heat of combat.")
         elif effect_type == 'stat_boost':
             if not in_combat:
                 stat_to_boost = effect_value.get('stat')
@@ -1798,6 +1806,9 @@ class Room:
             elif secondary_content_roll < hazard_spawn_threshold:
                 if HAZARDS:
                     self.hazard = random.choice(HAZARDS)
+                    if self.hazard.get('hidden'):
+                        self.hazard['is_currently_hidden'] = True
+                    self.hazard['disarmed'] = False
             elif secondary_content_roll < monster_spawn_threshold:
                 if MONSTERS:
                     eligible_monsters = []
@@ -1844,8 +1855,10 @@ class Room:
         if self.puzzle and not self.puzzle.get('solved', True):
             print(f"A puzzle here demands your attention: {self.puzzle['description']}")
 
-        if self.hazard:
+        if self.hazard and not self.hazard.get('is_currently_hidden', False):
             print(f"Watch out! There's {self.hazard['name']} here!")
+        elif self.hazard and self.hazard.get('is_currently_hidden', False):
+            print("You feel a sense of danger, but you're not sure from where.")
 
         # Only display monster if it's not a boss guardian waiting to spawn, or if it IS a boss guardian and has spawned.
         if self.monster and not self.monster.get('is_boss_guardian', False):
@@ -1976,7 +1989,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
         if game_result == 'lose':
             return 'lose'
     # Handle immediate hazard upon entering room
-    if current_room.hazard:
+    if current_room.hazard and not current_room.hazard.get('is_currently_hidden', False):
         print(current_room.hazard['effect_message'].format(damage=current_room.hazard['damage']))
         # MODIFIED: Include equipped_cloak in total defense calculation for hazards
         total_initial_defense = (player_shield_value.get('defense', 0) if player_shield_value else 0) + \
@@ -2099,6 +2112,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    give [item] to [target]       - Give an item to a statue/NPC in a puzzle room.")
             print("    unlock [direction] with [key name] - Unlock a locked exit.")
             print("    look                          - See the room description again.")
+            print("    search                        - Search the room for hidden traps.")
+            print("    disarm [trap name]            - Attempt to disarm a detected trap.")
             print("    inventory                     - Check your items and inventory space.")
             print("    save                          - Save your current game progress.")
             print("    ohinn                         - Teleport to a mystical inn.")
@@ -2232,6 +2247,17 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         # NEW/MODIFIED: Consolidated 'go' and direct directional commands
         elif verb in ["go", "north", "south", "east", "west"]:
+            if current_room.hazard and current_room.hazard.get('is_currently_hidden') and not current_room.hazard.get('disarmed'):
+                print(f"You stumble into a hidden {current_room.hazard['name']}!")
+                current_room.hazard['is_currently_hidden'] = False
+                # Trigger the trap
+                player_hp -= current_room.hazard['damage']
+                print(current_room.hazard['effect_message'].format(damage=current_room.hazard['damage']))
+                print(f"Your health is now {player_hp}/{max_hp} HP.")
+                if player_hp <= 0:
+                    return 'lose'
+                continue
+
             if current_room.monster:
                 if current_room.monster.get('is_boss_guardian', False) and current_room.boss_monster_spawned:
                     print(f"You can't leave! The powerful {current_room.monster['name']} blocks your escape!")
@@ -3280,6 +3306,48 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
                 handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
             display_room_content_summary(current_room, rooms_travelled, direction_history)
+
+        elif verb == "search":
+            if current_room.hazard and current_room.hazard.get('is_currently_hidden'):
+                print("You search the room carefully...")
+                time.sleep(1)
+                perception_chance = 0.5
+                if any(item.get('effect_type') == 'perception_boost' for item in player_effects):
+                    perception_chance = 0.9
+                if random.random() < perception_chance:
+                    current_room.hazard['is_currently_hidden'] = False
+                    print(f"You found a {current_room.hazard['name']}!")
+                else:
+                    print("You don't find anything unusual.")
+            else:
+                print("You search the room, but find nothing of interest.")
+
+        elif verb == "disarm":
+            if current_room.hazard and not current_room.hazard.get('is_currently_hidden'):
+                if current_room.hazard.get('disarmable'):
+                    if not current_room.hazard.get('disarmed'):
+                        print(f"You attempt to disarm the {current_room.hazard['name']}...")
+                        time.sleep(1)
+                        disarm_chance = 0.5
+                        if any(item['name'] == 'Trap Disarming Kit' for item in player_inventory):
+                            disarm_chance = 0.9
+                        if random.random() < disarm_chance:
+                            current_room.hazard['disarmed'] = True
+                            print(f"You successfully disarmed the {current_room.hazard['name']}.")
+                        else:
+                            print(f"You failed to disarm the {current_room.hazard['name']} and triggered it!")
+                            # Trigger the trap
+                            player_hp -= current_room.hazard['damage']
+                            print(current_room.hazard['effect_message'].format(damage=current_room.hazard['damage']))
+                            print(f"Your health is now {player_hp}/{max_hp} HP.")
+                            if player_hp <= 0:
+                                return 'lose'
+                    else:
+                        print("The trap is already disarmed.")
+                else:
+                    print("This hazard cannot be disarmed.")
+            else:
+                print("There is no visible trap to disarm.")
 
         elif verb == "credits":
             print(CREDITS_TEXT)

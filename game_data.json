@@ -2022,6 +2022,20 @@
         "defense": -5,
         "gold_find": 2.0
       }
+    },
+    {
+      "name": "Trap Disarming Kit",
+      "type": "misc",
+      "description": "A set of tools for disarming traps.",
+      "shop_price": 100
+    },
+    {
+      "name": "Potion of Perception",
+      "type": "consumable",
+      "effect_type": "perception_boost",
+      "effect_value": { "stat": "perception", "amount": 1 },
+      "description": "A potion that sharpens your senses, making it easier to spot hidden dangers.",
+      "shop_price": 75
     }
   ],
   "npcs": [
@@ -2591,6 +2605,47 @@
     }
   ],
   "hazards": [
+    {
+      "name": "Spike Trap",
+      "type": "trap",
+      "description": "A hidden plate on the floor conceals sharp spikes.",
+      "effect_message": "You step on a hidden plate, and spikes shoot up from the floor! You take {damage} damage.",
+      "damage": 25,
+      "hidden": true,
+      "disarmable": true
+    },
+    {
+      "name": "Poison Dart Trap",
+      "type": "trap",
+      "description": "Small holes in the wall suggest a hidden mechanism.",
+      "effect_message": "A volley of poison darts flies out from the wall! You take {damage} damage and are poisoned.",
+      "damage": 15,
+      "hidden": true,
+      "disarmable": true
+    },
+    {
+      "name": "Bear Trap",
+      "type": "trap",
+      "description": "A crude but effective bear trap lies hidden among the debris.",
+      "effect_message": "You step into a bear trap! The steel jaws snap shut on your leg, dealing {damage} damage.",
+      "damage": 20,
+      "hidden": true,
+      "disarmable": true
+    },
+    {
+      "name": "Slippery Ice",
+      "type": "environmental",
+      "description": "The floor is a sheet of slippery ice.",
+      "effect_message": "You slip on the ice and fall, taking {damage} damage.",
+      "damage": 5
+    },
+    {
+      "name": "Thick Fog",
+      "type": "environmental",
+      "description": "A thick fog fills the room, obscuring your vision.",
+      "effect_message": "The fog is disorienting, causing you to stumble. You take {damage} damage.",
+      "damage": 5
+    },
     {
       "name": "collapsing ceiling",
       "description": "Cracks spiderweb across the ceiling, and dust rains down.",
