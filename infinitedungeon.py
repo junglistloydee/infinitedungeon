@@ -215,6 +215,27 @@ def apply_and_tick_effects(player_effects):
 
     return stat_modifiers
 
+def apply_and_tick_status_effects(effects, character_hp):
+    """
+    Applies active status effects to a character for the current turn, ticks down their duration, and removes expired effects.
+    Returns updated character_hp and a boolean indicating if the character is stunned.
+    """
+    is_stunned = False
+    for effect in list(effects):
+        if effect['type'] == 'dot':
+            damage = effect['damage']
+            character_hp -= damage
+            print(effect['message_tick'].format(damage=damage))
+        elif effect['type'] == 'control' and effect['name'] == 'Stun':
+            is_stunned = True
+        elif effect['type'] == 'persistent_debuff':
+            pass
+        effect['duration'] -= 1
+        if effect['duration'] == 0:
+            print(effect['message_wear_off'])
+            effects.remove(effect)
+    return character_hp, is_stunned
+
 def add_article(word):
     """Adds 'a' or 'an' prefix to a word based on its starting letter."""
     if not word:
@@ -377,6 +398,25 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
                     print("This item seems to have no effect.")
             else:
                 print("You can't use this powerful item in the heat of combat.")
+        elif effect_type == 'cure':
+            effect_to_cure = item_to_use.get('effect_value')
+            if effect_to_cure:
+                stat_changes['remove_effect'] = effect_to_cure
+                print(f"You use the {item_to_use['name']}.")
+                player_inventory.remove(item_to_use)
+                action_consumed_turn = True
+        elif effect_type == 'inflict':
+            if in_combat:
+                effect_to_inflict_name = item_to_use.get('effect_value')
+                status_effects_data = GAME_DATA.get('status_effects', [])
+                effect_def = next((e for e in status_effects_data if e['name'] == effect_to_inflict_name), None)
+                if effect_def:
+                    stat_changes['add_effect_to_monster'] = copy.deepcopy(effect_def)
+                    print(f"You use the {item_to_use['name']}!")
+                    player_inventory.remove(item_to_use)
+                    action_consumed_turn = True
+            else:
+                print("You can only use this item in combat.")
         else:
             print(f"You can't use {add_article(item_to_use['name'])} in that way right now.")
     elif item_type == 'backpack':
@@ -592,6 +632,8 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
 def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet):
+    player_status_effects = []
+    monster_status_effects = []
     """
     Handles a simple turn-based combat encounter.
     Returns the updated player_hp, max_hp, monster_data (None if defeated), gold_gained,
@@ -612,6 +654,14 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     # Defense values are now from the equipped item dictionaries
     # MODIFIED: Include equipped_cloak in total_player_defense calculation
     total_player_defense = calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet) + current_defense_bonus
+    for effect in player_status_effects:
+        if effect['name'] == 'Curse':
+            total_player_defense += effect['effect']['modifier']
+
+    monster_defense = monster_data.get('defense', 0)
+    for effect in monster_status_effects:
+        if effect['name'] == 'Curse':
+            monster_defense += effect['effect']['modifier']
 
     sound_manager.stop_music()
     sound_manager.play_music('combat_music')
@@ -621,9 +671,13 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
         print(f"Your Total Defense: {total_player_defense}")
 
     while player_hp > 0 and monster_current_hp > 0:
-
-        print("\nWhat do you do? (attack / heal / run / use [item name] / inventory / help)")
-        combat_command_input = input("Combat Action> ").lower().strip()
+        player_hp, is_player_stunned = apply_and_tick_status_effects(player_status_effects, player_hp)
+        if is_player_stunned:
+            print("You are stunned and cannot act!")
+            action_taken = True
+        else:
+            print("\nWhat do you do? (attack / heal / run / use [item name] / inventory / help)")
+            combat_command_input = input("Combat Action> ").lower().strip()
         parts = combat_command_input.split()
 
         verb = "" # Initialize verb to an empty string
@@ -647,17 +701,32 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
 
             is_crit = False
-            if random.random() < (player_crit_chance + current_crit_chance_bonus):
+            accuracy = 1.0
+            for effect in player_status_effects:
+                if effect['name'] == 'Blindness':
+                    accuracy += effect['effect']['modifier']
+
+            if random.random() > accuracy:
+                print("You miss!")
+                damage_dealt = 0
+            elif random.random() < (player_crit_chance + current_crit_chance_bonus):
                 damage_dealt = int(base_damage * player_crit_multiplier)
                 is_crit = True
             else:
                 damage_dealt = base_damage
 
+            damage_dealt = max(0, damage_dealt - monster_defense)
             monster_current_hp -= damage_dealt
             if is_crit:
                 print(f"You deliver a **CRITICAL HIT** to the {monster_name} for {damage_dealt} damage!")
             else:
                 print(f"You strike the {monster_name} for {damage_dealt} damage!")
+
+            if equipped_weapon and 'status_effects' in equipped_weapon:
+                for effect in equipped_weapon['status_effects']:
+                    if random.random() < effect['chance']:
+                        monster_status_effects.append(copy.deepcopy(effect))
+                        print(f"The {monster_name} is now {effect['name']}!")
             action_taken = True
 
             if monster_current_hp <= 0:
@@ -764,7 +833,16 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
 
             if item_found_in_inventory:
                 original_player_hp = player_hp
-                player_hp, max_hp, current_max_inventory_slots, consumed_turn, _ = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
+                player_hp, max_hp, current_max_inventory_slots, consumed_turn, stat_changes = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
+                action_taken = consumed_turn
+                if 'remove_effect' in stat_changes:
+                    effect_to_remove = stat_changes['remove_effect']
+                    player_status_effects = [effect for effect in player_status_effects if effect['name'] != effect_to_remove]
+                    print(f"The {effect_to_remove} has been cured.")
+                if 'add_effect_to_monster' in stat_changes:
+                    effect_to_add = stat_changes['add_effect_to_monster']
+                    monster_status_effects.append(effect_to_add)
+                    print(f"The {monster_name} is now {effect_to_add['name']}!")
 
                 if player_hp <= 0:
                     print(f"You succumb to the effects of {add_article(item_found_in_inventory['name'])}...")
@@ -804,6 +882,10 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                                 display_str += " (Stimulant)"
                             elif effect_type == 'flavor':
                                 display_str += " (Consumable)"
+                            elif effect_type == 'cure':
+                                display_str += f" (Cures {item_dict.get('effect_value')})"
+                            elif effect_type == 'inflict':
+                                display_str += f" (Inflicts {item_dict.get('effect_value')})"
                         elif item_type == 'weapon':
                             display_str += f" (Damage: {item_dict.get('damage', '?')})"
                             if equipped_weapon and equipped_weapon['name'].lower() == item_dict['name'].lower():
@@ -895,10 +977,21 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             continue
 
         if action_taken and player_hp > 0 and monster_current_hp > 0:
-            monster_actual_damage = random.randint(monster_base_damage - monster_damage_variance, monster_base_damage + monster_damage_variance)
-
+            monster_current_hp, is_monster_stunned = apply_and_tick_status_effects(monster_status_effects, monster_current_hp)
+            if is_monster_stunned:
+                print(f"The {monster_name} is stunned and cannot act!")
+            else:
+                monster_actual_damage = random.randint(monster_base_damage - monster_damage_variance, monster_base_damage + monster_damage_variance)
             monster_is_crit = False
-            if random.random() < monster_crit_chance:
+            accuracy = 1.0
+            for effect in monster_status_effects:
+                if effect['name'] == 'Blindness':
+                    accuracy += effect['effect']['modifier']
+
+            if random.random() > accuracy:
+                print(f"The {monster_name} misses!")
+                monster_actual_damage = 0
+            elif random.random() < monster_crit_chance:
                 monster_actual_damage = int(monster_actual_damage * monster_crit_multiplier)
                 monster_is_crit = True
 
@@ -910,12 +1003,22 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             else:
                 print(f"The {monster_name} retaliates, hitting you for {monster_actual_damage} damage! Your defense absorbed {monster_actual_damage - damage_after_defense} damage.")
 
+            if 'status_effects' in monster_data:
+                for effect in monster_data['status_effects']:
+                    if random.random() < effect['chance']:
+                        player_status_effects.append(copy.deepcopy(effect))
+                        print(f"You are now {effect['name']}!")
+
             if player_hp <= 0:
                 print(f"The {monster_name} delivers a fatal blow...")
                 break
 
         if player_hp > 0 and monster_current_hp > 0:
-            print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}") # FIXED: Used max_hp here
+            print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}")
+            if player_status_effects:
+                print(f"Your status: {', '.join([effect['name'] for effect in player_status_effects])}")
+            if monster_status_effects:
+                print(f"{monster_name}'s status: {', '.join([effect['name'] for effect in monster_status_effects])}")
 
     sound_manager.stop_music()
     sound_manager.play_music('ambient_music')
@@ -2153,6 +2256,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                                 display_str += " (Stimulant)"
                             elif effect_type == 'flavor':
                                 display_str += " (Consumable)"
+                            elif effect_type == 'cure':
+                                display_str += f" (Cures {item_dict.get('effect_value')})"
+                            elif effect_type == 'inflict':
+                                display_str += f" (Inflicts {item_dict.get('effect_value')})"
                         elif item_type == 'weapon':
                             display_str += f" (Damage: {item_dict.get('damage', '?')})"
                             if equipped_weapon and equipped_weapon['name'].lower() == item_dict['name'].lower():
