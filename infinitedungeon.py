@@ -305,9 +305,10 @@ def calculate_xp_for_next_level(current_level):
     """Calculates the XP required for the next level."""
     return int(BASE_XP_TO_LEVEL_UP * (XP_SCALE_FACTOR ** (current_level - 1)))
 
-def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
+def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points):
     """Applies level-up bonuses to player stats."""
     player_level += 1
+    player_skill_points += 1
 
     old_max_hp = max_hp
     max_hp += HP_GAIN_PER_LEVEL
@@ -326,22 +327,67 @@ def level_up_player(player_hp, max_hp, player_level, player_attack_power, player
     print(f"Your Max HP increased from {old_max_hp} to {max_hp}!")
     print(f"Your Attack Power increased to {player_attack_power}!")
     print(f"Your Critical Chance increased to {player_crit_chance*100:.0f}%!")
+    print(f"You have gained a skill point! You now have {player_skill_points} skill point(s).")
     print(f"You feel fully revitalized!")
     print("#" * 50)
 
-    return player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+    return player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
 
-def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
+def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points):
     """Checks if the player has enough XP to level up and calls level_up_player."""
     while player_xp >= xp_to_next_level:
         player_xp -= xp_to_next_level
 
-        player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+        player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
 
         xp_to_next_level = calculate_xp_for_next_level(player_level)
 
-    return player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+    return player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
+
+
+def handle_skill_tree(player_class, player_level, player_skill_points, player_unlocked_skills):
+    """Displays the skill tree and allows the player to unlock skills."""
+    character_classes = GAME_DATA.get('character_classes', {})
+    class_data = character_classes.get(player_class)
+    if not class_data:
+        print("Invalid class. Cannot display skill tree.")
+        return player_skill_points, player_unlocked_skills
+
+    print(f"\n--- {player_class} Skill Tree ---")
+    print(f"You have {player_skill_points} skill point(s).")
+
+    skill_tree = class_data['skill_tree']
+    for skill in skill_tree:
+        status = "Unlocked" if skill['name'] in player_unlocked_skills else "Locked"
+        print(f"  - {skill['name']} (Level {skill['level_unlocked']}) - {skill['description']} [{status}]")
+
+    if player_skill_points > 0:
+        unlock_choice = input("\nEnter the name of the skill you want to unlock, or 'back': ").strip()
+        if unlock_choice.lower() == 'back':
+            return player_skill_points, player_unlocked_skills
+
+        skill_to_unlock = None
+        for skill in skill_tree:
+            if skill['name'].lower() == unlock_choice.lower():
+                skill_to_unlock = skill
+                break
+
+        if skill_to_unlock:
+            if skill_to_unlock['name'] in player_unlocked_skills:
+                print("You have already unlocked this skill.")
+            elif player_level >= skill_to_unlock['level_unlocked']:
+                player_skill_points -= 1
+                player_unlocked_skills.append(skill_to_unlock['name'])
+                print(f"You have unlocked '{skill_to_unlock['name']}'!")
+            else:
+                print(f"You need to be level {skill_to_unlock['level_unlocked']} to unlock this skill.")
+        else:
+            print("Invalid skill name.")
+    else:
+        input("Press Enter to continue...")
+
+    return player_skill_points, player_unlocked_skills
 
 
 def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=False):
@@ -632,7 +678,7 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills):
     player_status_effects = []
     monster_status_effects = []
     """
@@ -677,7 +723,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             print("You are stunned and cannot act!")
             action_taken = True
         else:
-            print("\nWhat do you do? (attack / heal / run / use [item name] / inventory / help)")
+            print("\nWhat do you do? (attack / skill / heal / run / use [item name] / inventory / help)")
             combat_command_input = input("Combat Action> ").lower().strip()
         parts = combat_command_input.split()
 
@@ -733,6 +779,95 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             if monster_current_hp <= 0:
                 print(f"The {monster_name} collapses, defeated!")
                 gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
+        elif verb == "skill":
+            if not player_unlocked_skills:
+                print("You have not unlocked any skills yet.")
+                continue
+
+            print("\nAvailable skills:")
+            for skill_name in player_unlocked_skills:
+                print(f"  - {skill_name}")
+
+            skill_choice = input("Enter the name of the skill you want to use, or 'back': ").strip()
+            if skill_choice.lower() == 'back':
+                continue
+
+            chosen_skill = None
+            for skill_name in player_unlocked_skills:
+                if skill_name.lower() == skill_choice.lower():
+                    character_classes = GAME_DATA.get('character_classes', {})
+                    class_data = character_classes.get(player_class)
+                    for skill_data in class_data['skill_tree']:
+                        if skill_data['name'] == skill_name:
+                            chosen_skill = skill_data
+                            break
+                    break
+
+            if chosen_skill:
+                effect = chosen_skill['effect']
+                if effect['type'] == 'damage_boost':
+                    base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+                    damage_dealt = int(base_damage * effect['value'])
+                    damage_dealt = max(0, damage_dealt - monster_defense)
+                    monster_current_hp -= damage_dealt
+                    print(f"You use {chosen_skill['name']} and deal {damage_dealt} damage!")
+                elif effect['type'] == 'guaranteed_crit':
+                    base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+                    damage_dealt = int(base_damage * player_crit_multiplier)
+                    damage_dealt = max(0, damage_dealt - monster_defense)
+                    monster_current_hp -= damage_dealt
+                    print(f"You use {chosen_skill['name']} for a guaranteed critical hit, dealing {damage_dealt} damage!")
+                elif effect['type'] == 'aoe_damage':
+                    damage_dealt = effect['damage']
+                    damage_dealt = max(0, damage_dealt - monster_defense)
+                    monster_current_hp -= damage_dealt
+                    print(f"You use {chosen_skill['name']} and deal {damage_dealt} damage to all enemies!")
+                elif effect['type'] == 'heal':
+                    healing_amount = effect['value']
+                    player_hp = min(max_hp, player_hp + healing_amount)
+                    print(f"You use {chosen_skill['name']} and heal for {healing_amount} HP.")
+                elif effect['type'] == 'stun':
+                    if random.random() < effect['chance']:
+                        monster_status_effects.append({"name": "Stun", "type": "control", "duration": 2}) # 2 turns because it ticks down once immediately
+                        print(f"You use {chosen_skill['name']} and stun the {monster_name}!")
+                    else:
+                        print(f"You use {chosen_skill['name']}, but it fails to stun the {monster_name}.")
+                elif effect['type'] == 'poison':
+                    monster_status_effects.append({"name": "Poison", "type": "dot", "damage": effect['damage'], "duration": effect['duration'] + 1, "message_tick": "The monster takes {damage} from poison.", "message_wear_off": "The monster is no longer poisoned."})
+                    print(f"You use {chosen_skill['name']} and poison the {monster_name}!")
+                elif effect['type'] == 'freeze':
+                    if random.random() < effect['chance']:
+                        monster_status_effects.append({"name": "Stun", "type": "control", "duration": 2})
+                        print(f"You use {chosen_skill['name']} and freeze the {monster_name} in place!")
+                    else:
+                        print(f"You use {chosen_skill['name']}, but the {monster_name} resists the freeze.")
+                elif effect['type'] == 'stat_buff':
+                    player_effects.append({"stat": effect['stat'], "modifier": effect['value'], "duration": effect['duration'] + 1, "message": f"You feel the power of {chosen_skill['name']}!"})
+                    print(f"You use {chosen_skill['name']} and feel stronger!")
+                elif effect['type'] == 'damage_modifier':
+                    undead_monsters = ["skeletal warrior", "feral ghoul", "vampire spawn", "lich's apprentice", "ghostly apparition", "specter of despair", "minotaur skeleton"]
+                    base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+                    damage_dealt = base_damage
+                    if monster_name.lower() in [m.lower() for m in undead_monsters]:
+                        damage_dealt = int(base_damage * effect['multiplier'])
+                        print("Your divine power smites the undead creature!")
+                    damage_dealt = max(0, damage_dealt - monster_defense)
+                    monster_current_hp -= damage_dealt
+                    print(f"You use {chosen_skill['name']} and deal {damage_dealt} damage!")
+                elif effect['type'] == 'shield':
+                    player_effects.append({"stat": "defense", "modifier": effect['value'], "duration": 1, "message": "An arcane shield surrounds you."})
+                    print(f"You summon an Arcane Shield that will absorb up to {effect['value']} damage.")
+                elif effect['type'] == 'dodge_buff':
+                    player_effects.append({"stat": "dodge_chance", "modifier": effect['value'], "duration": effect['duration'] + 1, "message": "You feel nimble and evasive."})
+                    print(f"You use {chosen_skill['name']} and feel much harder to hit.")
+                action_taken = True
+            else:
+                print("Invalid skill name.")
+                continue
+
+            if monster_current_hp <= 0:
+                print(f"The {monster_name} collapses, defeated!")
+                gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
                 if equipped_helmet and equipped_helmet.get('cursed') and equipped_helmet.get('curse_effect', {}).get('gold_find'):
                     gold_gained = int(gold_gained * equipped_helmet['curse_effect']['gold_find'])
                     print(f"Your {equipped_helmet['name']} doubles the gold dropped!")
@@ -778,8 +913,8 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                                 if q_data['current_count'] >= quest_def['target_count']:
                                     print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
 
-                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
 
                 monster_data = None
                 break
@@ -1137,8 +1272,8 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
     player_gold += total_gold_gained
     player_xp += total_xp_gained
 
-    player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-        check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+    player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+        check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
 
     # Special reward for defeating the horde
     if random.random() < 0.5: # 50% chance of a special item
@@ -1466,8 +1601,8 @@ def interact_with_quest_giver(npc, player_quests, player_level, player_inventory
                             print(f"You would have received an item, but your inventory is full!")
 
                 player_quests[npc_quest_id]['status'] = 'completed'
-                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
     elif quest_status == 'completed' and quest_def:
         print(f"{npc['name']}: '{quest_def.get('dialogue_complete_turn_in', 'Thank you for your help.')}'")
 
@@ -2024,7 +2159,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, monsters_defeated_this_run):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -2045,8 +2180,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             player_xp += xp_reward
             player_gold += gold_reward
             print(f"You gained {xp_reward} XP and {gold_reward} gold!")
-            player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = \
-                check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier)
+            player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+                check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
 
         # Handle Item Rewards
         if 'items' in rewards_data:
@@ -2238,6 +2373,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    equipped                      - View your currently equipped items.")
             print("    misc                          - View your currently equipped miscellaneous items.")
             print("    attack                        - Attack a monster in the room.")
+            print("    skill                         - Open the skill tree to view and unlock skills.")
             print("    combine                       - Combine items (e.g., 'combine healing potion').")
             print("    talk [person]                 - Attempt to talk to an NPC. In an inn, lists people to talk to.")
             print("    rest                          - Rest at an inn to restore health.")
@@ -2255,6 +2391,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    credits                       - Show game credits.")
             print("    quit                          - Exit the game.")
             print("-" * 50)
+
+        elif verb == "skill":
+            player_skill_points, player_unlocked_skills = handle_skill_tree(player_class, player_level, player_skill_points, player_unlocked_skills)
+
 
         elif verb == "look":
             display_room_content_summary(current_room, rooms_travelled, direction_history)
@@ -3622,6 +3762,44 @@ def main():
             print(f"Welcome, {player_name}, to the Infinite Dungeon!")
             log_event(f"New game started for player: {player_name}.")
 
+            # Class selection
+            character_classes = GAME_DATA.get('character_classes', {})
+            class_choices = list(character_classes.keys())
+
+            print("\nChoose your class:")
+            for i, class_name in enumerate(class_choices):
+                print(f"{i+1}. {class_name} - {character_classes[class_name]['description']}")
+
+            class_choice_index = -1
+            while class_choice_index not in range(len(class_choices)):
+                try:
+                    class_choice_input = input(f"Enter the number of your chosen class (1-{len(class_choices)}): ")
+                    class_choice_index = int(class_choice_input) - 1
+                    if class_choice_index not in range(len(class_choices)):
+                        print("Invalid choice. Please select a valid number.")
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
+
+            player_class = class_choices[class_choice_index]
+            class_data = character_classes[player_class]
+
+            # Initialize player stats and equipment based on class
+            max_hp = class_data['starting_stats']['max_hp']
+            player_hp = max_hp
+            player_attack_power = class_data['starting_stats']['attack_power']
+            player_attack_variance = class_data['starting_stats']['attack_variance']
+            player_crit_chance = class_data['starting_stats']['crit_chance']
+            player_crit_multiplier = class_data['starting_stats']['crit_multiplier']
+
+            player_inventory = []
+            for item_name in class_data['starting_equipment']:
+                item_def = get_item_by_name(item_name)
+                if item_def:
+                    player_inventory.append(copy.deepcopy(item_def))
+
+            player_skill_points = 0
+            player_unlocked_skills = []
+
             current_room = Room(player_level, player_quests)
             # --- NEW: Handle if the first room is an inn ---
             while getattr(current_room, 'is_inn', False):
@@ -3635,24 +3813,7 @@ def main():
             sound_manager.stop_music()
             sound_manager.play_music('ambient_music')
 
-            wooden_sword_def = get_item_by_name('wooden sword')
-            if wooden_sword_def:
-                player_inventory.append(copy.deepcopy(wooden_sword_def))
-                equipped_weapon = player_inventory[-1]
-                # When starting, set attack power based on equipped weapon + base.
-                # The game_loop will then keep it updated with level progression.
-                player_attack_power = BASE_PLAYER_ATTACK_POWER + wooden_sword_def.get('damage', 0)
-                print(f"You start with a {wooden_sword_def['name']}.")
-            else:
-                print("You are fighting with your fists.")
-
-            healing_potion_def = get_item_by_name('healing potion')
-            if healing_potion_def:
-                player_inventory.append(copy.deepcopy(healing_potion_def))
-                player_inventory.append(copy.deepcopy(healing_potion_def))
-                print(f"You also have 2 {healing_potion_def['name']}s.")
-
-
+            print(f"\nYou have chosen the path of the {player_class}. Your starting gear has been added to your inventory.")
             print(f"You can carry a maximum of {current_max_inventory_slots} items in your inventory.")
             rooms_travelled = 1
             initial_rooms_travelled = 1
@@ -3662,6 +3823,8 @@ def main():
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
+                game_result = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills) # Pass keychain and bonus
+
                 game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, monsters_defeated_this_run) # Pass keychain and bonus
 
                 rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
