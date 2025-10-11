@@ -1,4 +1,0 @@
-[2025-10-11 21:17:27] New game started for player: TestReaver.
-[2025-10-11 21:17:28] New game started for player: TestWhisper.
-[2025-10-11 21:17:29] New game started for player: TestProdigy.
-[2025-10-11 21:17:29] New game started for player: TestOracle.
