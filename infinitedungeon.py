@@ -111,9 +111,11 @@ MAIN_SCREEN_TEXT = """
 =======================================
 =       1. Start New Game             =
 =       2. Load Game                  =
-=       3. Adventurer's Guild         =
-=       4. Credits                    =
-=       5. Quit                       =
+=       3. Daily Challenge            =
+=       4. Seeded Run                 =
+=       5. Adventurer's Guild         =
+=       6. Credits                    =
+=       7. Quit                       =
 =======================================
 """
 
@@ -496,11 +498,13 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
 
     return player_hp, max_hp, current_max_inventory_slots, action_consumed_turn, stat_changes
 
-def display_room_content_summary(current_room, rooms_travelled, direction_history=None):
+def display_room_content_summary(current_room, rooms_travelled, direction_history=None, seed=None):
     """
     Displays the room description and then any relevant hints or status information.
     """
     status_text = f" Room: {rooms_travelled} "
+    if seed:
+        status_text += f"| Seed: {seed} "
     separator_length = (40 - len(status_text)) // 2
     print("=" * separator_length + status_text + "=" * (40 - separator_length - len(status_text)))
 
@@ -2286,7 +2290,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=None):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -2370,7 +2374,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         return player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
 
-    display_room_content_summary(current_room, rooms_travelled, direction_history)
+    display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
     if hasattr(current_room, 'crafting_station'):
         print(f"You are in a room with a {current_room.crafting_station}.")
@@ -2622,7 +2626,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("You can't enchant items here.")
 
         elif verb == "look":
-            display_room_content_summary(current_room, rooms_travelled, direction_history)
+            display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             # You might want to add debug.debug_player_data() here too for context
 
         elif verb.startswith("inv"): # Changed to use .startswith
@@ -2806,7 +2810,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 else:
                     sound_manager.play_music('ambient_music')
                 log_event(f"Player {player_name} returned to Room #{rooms_travelled}.")
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
                 continue
 
             elif direction in current_room.exits:
@@ -2830,7 +2834,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 rooms_travelled += 1
                 log_event(f"Player {player_name} entered Room #{rooms_travelled} travelling {direction}. Description: {current_room.description}")
 
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
                 # Handle immediate hazard upon entering new room
                 if current_room.hazard:
@@ -2880,7 +2884,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         return 'lose' # Game over, return 'lose'
                     if current_room.monster is None:
                         print(f"\nThe monster is defeated. The room is now safe.")
-                        display_room_content_summary(current_room, rooms_travelled)
+                        display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
 
             elif direction in current_room.locked_exits:
@@ -3100,7 +3104,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
                 player_inventory.remove(item_found_in_inventory)
                 current_room.item = item_found_in_inventory # Item returns to the room floor
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             elif item_found_in_keychain: # Item is in keychain
                 if current_room.item is not None:
                     print(f"You can't drop {add_article(item_found_in_keychain['name'])}. There's already {add_article(current_room.item['name'])} on the floor.")
@@ -3109,7 +3113,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print(f"You drop {add_article(item_found_in_keychain['name'])} from your keychain.")
                 player_keychain.remove(item_found_in_keychain)
                 current_room.item = item_found_in_keychain # Key returns to the room floor
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             else:
                 print(f"You don't have {item_to_drop_name_input} in your inventory or keychain.")
 
@@ -3288,7 +3292,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             return 'continue_adventure' # Default for pressing Enter or anything else
                     else:
                         print(f"\nThe monster is defeated. The room is now safe.")
-                        display_room_content_summary(current_room, rooms_travelled)
+                        display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             else:
                 print("There's nothing to attack here.")
 
@@ -3428,7 +3432,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
                 current_room.exits[direction_to_unlock] = True
                 del current_room.locked_exits[direction_to_unlock]
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             else:
                 if not has_correct_key and not found_key_item:
                     print(f"You don't have '{key_name_input}' in your inventory or keychain.")
@@ -3566,7 +3570,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
                 )
 
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             else:
                 print(f"'{player_answer.capitalize()}!' The voice sighs, 'Incorrect.'")
                 fail_penalty = current_room.puzzle.get('fail_penalty')
@@ -3802,14 +3806,14 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, temp_vendor_npc, player_keychain, player_level, sound_manager, equipped_misc_items) # Pass keychain and misc items
                 print("\n" + "=" * 30)
                 # After returning from handle_shop, display room summary
-                display_room_content_summary(current_room, rooms_travelled, direction_history)
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
             else:
                 print("You try to summon the vendor, but he doesn't seem to respond. Perhaps he's not in this realm?")
 
         elif verb == "ohinn":
             player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
                 handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
-            display_room_content_summary(current_room, rooms_travelled, direction_history)
+            display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
         elif verb == "search":
             if current_room.hazard and current_room.hazard.get('is_currently_hidden'):
@@ -3856,7 +3860,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
         elif verb == "credits":
             print(CREDITS_TEXT)
             input("Press Enter to continue...")
-            display_room_content_summary(current_room, rooms_travelled, direction_history)
+            display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
         elif verb in ["pray", "drink"]:
             if current_room.shrine:
@@ -3955,183 +3959,6 @@ def main():
         print(MAIN_SCREEN_TEXT)
         main_menu_choice = input("Enter your choice: ").strip()
 
-        if main_menu_choice == '1':
-            # Initialize player stats for a New Game
-            hp_upgrade_level = meta_progress['upgrades'].get('max_hp', 0)
-            hp_bonus = hp_upgrade_level * 5
-            player_hp = 100 + hp_bonus
-            max_hp = 100 + hp_bonus
-            player_attack_power = BASE_PLAYER_ATTACK_POWER
-            player_attack_bonus = 0 # NEW: For permanent stat boosts from items
-            player_attack_variance = BASE_PLAYER_ATTACK_VARIANCE
-            player_crit_chance = BASE_PLAYER_CRIT_CHANCE
-            player_crit_multiplier = BASE_PLAYER_CRIT_MULTIPLIER
-            current_max_inventory_slots = 5
-            player_gold = 75
-            player_shield_value = None
-            equipped_armor_value = None
-            equipped_cloak = None # NEW: Initialize equipped_cloak
-            equipped_helmet = None
-            equipped_weapon = None
-            player_xp = 0
-            player_level = 1
-            xp_to_next_level = calculate_xp_for_next_level(player_level)
-            player_inventory = []
-            player_keychain = [] # New: Initialize player keychain
-            player_quests = {}
-            player_reputation = {}
-            player_name = "Adventurer"
-            rooms_travelled = 0
-            equipped_misc_items = []
-            player_effects = []
-            room_history = []
-            direction_history = []
-            stash = []
-
-            print("=" * 40)
-            print("Starting a new adventure...")
-            player_name = input("Enter your adventurer's name: ").strip()
-            if not player_name:
-                player_name = "Adventurer"
-            print(f"Welcome, {player_name}, to the Infinite Dungeon!")
-            log_event(f"New game started for player: {player_name}.")
-
-            # Class selection
-            character_classes = GAME_DATA.get('character_classes', {})
-            class_choices = list(character_classes.keys())
-
-            print("\nChoose your class:")
-            for i, class_name in enumerate(class_choices):
-                print(f"{i+1}. {class_name} - {character_classes[class_name]['description']}")
-
-            class_choice_index = -1
-            while class_choice_index not in range(len(class_choices)):
-                try:
-                    class_choice_input = input(f"Enter the number of your chosen class (1-{len(class_choices)}): ")
-                    class_choice_index = int(class_choice_input) - 1
-                    if class_choice_index not in range(len(class_choices)):
-                        print("Invalid choice. Please select a valid number.")
-                except ValueError:
-                    print("Invalid input. Please enter a number.")
-
-            player_class = class_choices[class_choice_index]
-            class_data = character_classes[player_class]
-
-            # Initialize player stats and equipment based on class
-            max_hp = class_data['starting_stats']['max_hp']
-            player_hp = max_hp
-            player_attack_power = class_data['starting_stats']['attack_power']
-            player_attack_variance = class_data['starting_stats']['attack_variance']
-            player_crit_chance = class_data['starting_stats']['crit_chance']
-            player_crit_multiplier = class_data['starting_stats']['crit_multiplier']
-
-            player_inventory = []
-            for item_name in class_data['starting_equipment']:
-                item_def = get_item_by_name(item_name)
-                if item_def:
-                    player_inventory.append(copy.deepcopy(item_def))
-
-            player_skill_points = 0
-            player_unlocked_skills = []
-
-            current_room = Room(player_level, player_quests)
-            # --- NEW: Handle if the first room is an inn ---
-            while getattr(current_room, 'is_inn', False):
-                print("You stumble upon a cozy inn right at the start of your adventure!")
-                player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
-                    handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
-
-                print("You leave the inn, ready to begin your journey.")
-                current_room = Room(player_level, player_quests) # Generate a new room to start in
-            # --- END NEW ---
-            sound_manager.stop_music()
-            sound_manager.play_music('ambient_music')
-
-            print(f"\nYou have chosen the path of the {player_class}. Your starting gear has been added to your inventory.")
-            print(f"You can carry a maximum of {current_max_inventory_slots} items in your inventory.")
-            rooms_travelled = 1
-            initial_rooms_travelled = 1
-
-
-            # This inner loop now allows the player to continue their adventure
-            # after "winning" or after "losing" if they choose to restart.
-            while True:
-                # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
-                game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash)
-
-                rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
-                shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
-                if shards_earned > 0:
-                    print(f"\nYou earned {shards_earned} Soul Shards for your efforts.")
-                    meta_progress['soul_shards'] += shards_earned
-                    save_meta_progress(meta_progress)
-                if game_result == 'continue_adventure':
-                    # Player chose to continue after main objective.
-                    # Generate a new room, heal, increment rooms travelled, and continue.
-                    player_hp = max_hp # Heal player after a major victory
-                    current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
-                    rooms_travelled += 1
-                    print("\nYour adventure in the Infinite Dungeon continues!")
-                    display_room_content_summary(current_room, rooms_travelled)
-                    continue # Loop back to the start of the inner while True to continue the game
-
-                elif game_result == 'return_to_menu':
-                    # Player chose to return to menu after main objective
-                    print("\nReturning to the main menu...")
-                    break # Break from the inner loop to go back to the main menu loop
-
-                elif game_result == 'lose':
-                    print("\nWhat would you like to do next?")
-                    print("1. Try Again (Restart this adventure from the beginning)")
-                    print("2. Return to Main Menu")
-                    lose_choice = input("> ").strip()
-                    if lose_choice == '1':
-                        # Reset all game state to initial New Game values (except name)
-                        player_hp = 100
-                        max_hp = 100
-                        player_attack_power = BASE_PLAYER_ATTACK_POWER
-                        player_attack_variance = BASE_PLAYER_ATTACK_VARIANCE
-                        player_crit_chance = BASE_PLAYER_CRIT_CHANCE
-                        player_crit_multiplier = BASE_PLAYER_CRIT_MULTIPLIER
-                        current_max_inventory_slots = 5
-                        player_gold = 75
-                        player_shield_value = None
-                        equipped_armor_value = None
-                        equipped_cloak = None # NEW: Reset equipped_cloak on 'Try Again'
-                        equipped_weapon = None
-                        player_xp = 0
-                        player_level = 1
-                        xp_to_next_level = calculate_xp_for_next_level(player_level)
-                        player_inventory = []
-                        player_keychain = [] # Reset keychain on 'Try Again'
-                        player_quests = {}
-                        rooms_travelled = 0 # Reset rooms travelled
-                        equipped_misc_items = []
-                        room_history = []
-                        direction_history = []
-                        current_room = Room(player_level, player_quests) # New first room
-                        monsters_defeated_this_run = 0
-                        initial_rooms_travelled = 1
-
-                        # Re-add starting items
-                        wooden_sword_def = get_item_by_name('wooden sword')
-                        if wooden_sword_def:
-                            player_inventory.append(copy.deepcopy(wooden_sword_def))
-                            equipped_weapon = player_inventory[-1]
-                            player_attack_power = BASE_PLAYER_ATTACK_POWER + wooden_sword_def.get('damage', 0)
-                        healing_potion_def = get_item_by_name('healing potion')
-                        if healing_potion_def:
-                            player_inventory.append(copy.deepcopy(healing_potion_def))
-                            player_inventory.append(copy.deepcopy(healing_potion_def))
-
-                        print("\n" + "=" * 40)
-                        print(f"You pick yourself up, {player_name}, and bravely begin anew!")
-                        print("=" * 40)
-                        continue # Loop back to the start of the inner while True to continue the adventure
-                    else:
-                        break # Break from the inner loop to return to the main menu
-                else: # game_result == 'quit'
-                    return # Exit the main function
 
 
         elif main_menu_choice == '2':
@@ -4235,7 +4062,7 @@ def main():
                         current_room = Room(player_level, player_quests) # Generate a new room
                     # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash)
+                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=None)
 
                     rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
                     shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
@@ -4279,19 +4106,34 @@ def main():
                 continue # No save game found, stay in main menu
 
         elif main_menu_choice == '3':
+            today = datetime.now().strftime('%Y-%m-%d')
+            start_new_game(meta_progress, seed=today, is_daily_challenge=True)
+
+        elif main_menu_choice == '4':
+            seed = input("Enter the seed for your run: ").strip()
+            if not seed:
+                print("Seed cannot be empty.")
+                continue
+            start_new_game(meta_progress, seed=seed)
+
+        elif main_menu_choice == '5':
             handle_adventurers_guild(meta_progress)
             continue
 
-        elif main_menu_choice == '4':
+        elif main_menu_choice == '6':
             print(CREDITS_TEXT)
             input("Press Enter to continue...")
             continue
 
-        elif main_menu_choice == '5':
+        elif main_menu_choice == '7':
             print("Thanks for playing!")
             if DEBUG: # Wrapped debug calls
                 debug.close_debug_log() # Close log before final exit from main menu
             break # Exit the main menu loop, ending the program
+
+def set_seed(seed):
+    """Sets the seed for the random number generator."""
+    random.seed(seed)
 
 def handle_adventurers_guild(meta_progress):
     """Handles the Adventurer's Guild hub."""
@@ -4323,6 +4165,307 @@ def handle_adventurers_guild(meta_progress):
             break
         else:
             print("Invalid choice. Please try again.")
+
+def start_new_game(meta_progress, seed, is_daily_challenge=False):
+    """Sets up and runs a new game, handling all pre-game and post-game logic."""
+    monsters_defeated_this_run = 0
+    if is_daily_challenge:
+        print(f"Starting Daily Challenge for {seed}...")
+        player_name_prompt = "Enter your adventurer's name for the leaderboard: "
+    else:
+        print("Starting a new adventure...")
+        player_name_prompt = "Enter your adventurer's name: "
+
+    set_seed(seed)
+
+    hp_upgrade_level = meta_progress['upgrades'].get('max_hp', 0)
+    hp_bonus = hp_upgrade_level * 5
+    player_hp = 100 + hp_bonus
+    max_hp = 100 + hp_bonus
+    player_attack_power = BASE_PLAYER_ATTACK_POWER
+    player_attack_bonus = 0
+    player_attack_variance = BASE_PLAYER_ATTACK_VARIANCE
+    player_crit_chance = BASE_PLAYER_CRIT_CHANCE
+    player_crit_multiplier = BASE_PLAYER_CRIT_MULTIPLIER
+    current_max_inventory_slots = 5
+    player_gold = 75
+    player_shield_value = None
+    equipped_armor_value = None
+    equipped_cloak = None
+    equipped_helmet = None
+    equipped_weapon = None
+    player_xp = 0
+    player_level = 1
+    xp_to_next_level = calculate_xp_for_next_level(player_level)
+    player_inventory = []
+    player_keychain = []
+    player_quests = {}
+    player_reputation = {}
+    equipped_misc_items = []
+    player_effects = []
+    room_history = []
+    direction_history = []
+    stash = []
+
+    player_name = input(player_name_prompt).strip()
+    if not player_name:
+        player_name = "Adventurer"
+
+    character_classes = GAME_DATA.get('character_classes', {})
+    class_choices = list(character_classes.keys())
+    print("\nChoose your class:")
+    for i, class_name in enumerate(class_choices):
+        print(f"{i+1}. {class_name} - {character_classes[class_name]['description']}")
+    class_choice_index = -1
+    while class_choice_index not in range(len(class_choices)):
+        try:
+            class_choice_input = input(f"Enter the number of your chosen class (1-{len(class_choices)}): ")
+            class_choice_index = int(class_choice_input) - 1
+            if class_choice_index not in range(len(class_choices)):
+                print("Invalid choice. Please select a valid number.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+    player_class = class_choices[class_choice_index]
+    class_data = character_classes[player_class]
+    max_hp = class_data['starting_stats']['max_hp']
+    player_hp = max_hp
+    player_attack_power = class_data['starting_stats']['attack_power']
+    player_attack_variance = class_data['starting_stats']['attack_variance']
+    player_crit_chance = class_data['starting_stats']['crit_chance']
+    player_crit_multiplier = class_data['starting_stats']['crit_multiplier']
+    for item_name in class_data['starting_equipment']:
+        item_def = get_item_by_name(item_name)
+        if item_def:
+            player_inventory.append(copy.deepcopy(item_def))
+    player_skill_points = 0
+    player_unlocked_skills = []
+
+    current_room = Room(player_level, player_quests)
+    rooms_travelled = 1
+    initial_rooms_travelled = 1
+    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=seed if is_daily_challenge else None)
+
+    score = (rooms_travelled - initial_rooms_travelled) * 100 + monsters_defeated_this_run * 50
+    shards_earned = (rooms_travelled - initial_rooms_travelled) + (monsters_defeated_this_run * 5)
+    if shards_earned > 0:
+        print(f"\nYou earned {shards_earned} Soul Shards for your efforts.")
+        meta_progress['soul_shards'] += shards_earned
+        save_meta_progress(meta_progress)
+
+    if is_daily_challenge:
+        leaderboard = {}
+        try:
+            with open('leaderboard.json', 'r') as f:
+                leaderboard = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            leaderboard = {}
+
+        today = datetime.now().strftime('%Y-%m-%d')
+        if today not in leaderboard:
+            leaderboard[today] = []
+
+        leaderboard[today].append({"name": player_name, "score": score})
+        leaderboard[today] = sorted(leaderboard[today], key=lambda x: x['score'], reverse=True)
+
+        with open('leaderboard.json', 'w') as f:
+            json.dump(leaderboard, f, indent=4)
+
+        print("\n--- Daily Challenge Leaderboard ---")
+        for i, entry in enumerate(leaderboard[today]):
+            print(f"{i+1}. {entry['name']} - {entry['score']}")
+        input("\nPress Enter to continue...")
+
+    return game_result
+
+# --- Main Game Execution ---
+
+def main():
+    """The main function to run the game."""
+    global DEBUG
+    if "debug" in sys.argv or "/debug" in sys.argv:
+        DEBUG = True
+
+    if DEBUG:
+        debug.initialize_debug_log(True)
+
+    meta_progress = load_meta_progress()
+    while True: # This loop keeps the main menu active
+        monsters_defeated_this_run = 0
+        print(MAIN_SCREEN_TEXT)
+        main_menu_choice = input("Enter your choice: ").strip()
+
+        if main_menu_choice == '1':
+            start_new_game(meta_progress, seed=time.time())
+
+        elif main_menu_choice == '2':
+            # Load Game
+            loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
+            loaded_attack_power, loaded_attack_bonus, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, loaded_player_effects, loaded_room_history, loaded_direction_history, loaded_stash, loaded_player_class, loaded_player_skill_points, loaded_player_unlocked_skills, loaded_equipped_helmet = load_game()
+
+            print("=" * 40)
+            if loaded_hp is not None:
+                initial_rooms_travelled = loaded_rooms_travelled
+                monsters_defeated_this_run = 0
+                # Assign loaded values to game variables
+                player_hp = loaded_hp
+                max_hp = loaded_max_hp
+                player_inventory = loaded_inventory
+                current_room = loaded_room
+                current_max_inventory_slots = loaded_max_slots
+                player_gold = loaded_gold
+                player_shield_value = loaded_shield
+                equipped_armor_value = loaded_armor
+                equipped_cloak = loaded_cloak # NEW: Assign loaded equipped_cloak
+                player_attack_power = loaded_attack_power
+                player_attack_bonus = loaded_attack_bonus # NEW: Assign loaded attack bonus
+                player_attack_variance = loaded_attack_variance
+                player_crit_chance = loaded_crit_chance
+                player_crit_multiplier = loaded_crit_multiplier
+                equipped_weapon = loaded_equipped_weapon
+                player_xp = loaded_xp
+                player_level = loaded_level
+                xp_to_next_level = loaded_xp_to_next_level
+                player_quests = loaded_player_quests
+                player_name = loaded_player_name
+                rooms_travelled = loaded_rooms_travelled
+                player_keychain = loaded_player_keychain # Assign loaded keychain
+                equipped_misc_items = loaded_misc_items
+                player_effects = loaded_player_effects
+                room_history = loaded_room_history
+                direction_history = loaded_direction_history
+                stash = loaded_stash
+                player_class = loaded_player_class
+                player_skill_points = loaded_player_skill_points
+                player_unlocked_skills = loaded_player_unlocked_skills
+                player_reputation = loaded_player_reputation
+                equipped_helmet = loaded_equipped_helmet
+
+                # After loading, re-evaluate quest counts for 'fetch_item' quests to ensure consistency
+                for q_id, q_data in player_quests.items():
+                    quest_def = get_quest_by_id(q_id)
+                    if quest_def and q_data['status'] == 'active' and quest_def['type'] == 'fetch_item':
+                        # Check both inventory and keychain for quest items
+                        q_data['current_count'] = sum(1 for item in player_inventory if item['name'].lower() == quest_def['target_item'].lower()) + \
+                                                 sum(1 for item in player_keychain if item['name'].lower() == quest_def['target_item'].lower())
+
+                # After loading, recalculate player_attack_power with the correct additive logic
+                current_base_attack_after_load = BASE_PLAYER_ATTACK_POWER + (player_level - 1) * ATTACK_GAIN_PER_LEVEL
+                if equipped_weapon:
+                    player_attack_power = current_base_attack_after_load + equipped_weapon.get('damage', 0)
+                else:
+                    player_attack_power = current_base_attack_after_load
+
+
+                print(f"Welcome back, {player_name}!")
+                log_event(f"Game loaded for player: {player_name}.")
+                print(f"Your current health: {player_hp}/{max_hp} HP.")
+                print(f"Your current gold: {player_gold} gold.")
+                print(f"Your Level: {player_level} (XP: {player_xp}/{xp_to_next_level})")
+                if player_shield_value:
+                    print(f"You are currently protected by a {player_shield_value['name']} offering {player_shield_value.get('defense',0)} defense.")
+                else:
+                    print("You are currently not protected by a shield.")
+                if equipped_armor_value:
+                    print(f"You are currently wearing {equipped_armor_value['name']} offering {equipped_armor_value.get('defense',0)} defense.")
+                else:
+                    print("You are currently not wearing body armor.")
+                # NEW: Display equipped cloak on load
+                if equipped_cloak:
+                    print(f"You are currently wearing a {equipped_cloak['name']} offering {equipped_cloak.get('defense',0)} defense.")
+                else:
+                    print("You are currently not wearing a cloak.")
+                if equipped_weapon:
+                    print(f"You are currently wielding {equipped_weapon['name']}.")
+                else:
+                    print("You are fighting with your fists.")
+
+                # This inner loop also applies to loaded games
+                while True:
+                    sound_manager.stop_music()
+                    if getattr(current_room, 'is_inn', False):
+                        sound_manager.play_music('inn_music')
+                    else:
+                        sound_manager.play_music('ambient_music')
+
+                    # --- NEW: Handle if a loaded room is an inn ---
+                    while getattr(current_room, 'is_inn', False):
+                        print("You load your game and find yourself in a welcoming inn.")
+                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
+                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
+
+                        print("You leave the inn to continue your journey.")
+                        current_room = Room(player_level, player_quests) # Generate a new room
+                    # --- END NEW ---
+                    # MODIFIED: Added equipped_cloak to game_loop parameters
+                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=None)
+
+                    rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
+                    shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
+                    if shards_earned > 0:
+                        print(f"\nYou earned {shards_earned} Soul Shards for your efforts.")
+                        meta_progress['soul_shards'] += shards_earned
+                        save_meta_progress(meta_progress)
+
+                    if game_result == 'continue_adventure':
+                        current_room = Room(player_level, player_quests) # Generate a new room to continue exploring
+                        rooms_travelled += 1
+                        player_hp = max_hp
+                        print("\nYour adventure in the Infinite Dungeon continues!")
+                        print("=" * 40)
+                        display_room_content_summary(current_room, rooms_travelled, direction_history, seed=None)
+                        continue
+                    elif game_result == 'return_to_menu':
+                        print("\nReturning to the main menu...")
+                        break # Break from the inner loop to go back to the main menu loop
+                    elif game_result == 'lose':
+                        print("\nWhat would you like to do next?")
+                        print("1. Try Again (Restart this adventure from the beginning)")
+                        print("2. Return to Main Menu")
+                        lose_choice = input("> ").strip()
+                        if lose_choice == '1':
+                            # For loaded games, 'Try Again' still restarts the *current session* from scratch
+                            # This means losing the loaded progress. A more complex system would save checkpoint.
+                            # For simplicity, we'll just break
+                            # to main menu which means they can then Load again.
+                            print("\n" + "=" * 40)
+                            print(f"You pick yourself up, {player_name}, and bravely begin anew!")
+                            print("=" * 40)
+                            break # Break from inner loop, effectively returning to main menu
+                        else:
+                            break # Break from the inner loop to return to the main menu
+                    else: # game_result == 'quit'
+                        return
+
+
+            else:
+                continue # No save game found, stay in main menu
+
+        elif main_menu_choice == '3':
+            today = datetime.now().strftime('%Y-%m-%d')
+            start_new_game(meta_progress, seed=today, is_daily_challenge=True)
+
+        elif main_menu_choice == '4':
+            seed = input("Enter the seed for your run: ").strip()
+            if not seed:
+                print("Seed cannot be empty.")
+                continue
+            start_new_game(meta_progress, seed=seed)
+
+        elif main_menu_choice == '5':
+            handle_adventurers_guild(meta_progress)
+            continue
+
+        elif main_menu_choice == '6':
+            print(CREDITS_TEXT)
+            input("Press Enter to continue...")
+            continue
+
+        elif main_menu_choice == '7':
+            print("Thanks for playing!")
+            if DEBUG: # Wrapped debug calls
+                debug.close_debug_log() # Close log before final exit from main menu
+            break # Exit the main menu loop, ending the program
 
 # --- Start the game ---
 if __name__ == "__main__":
