@@ -1,0 +1,83 @@
+{
+    "player_data": {
+        "name": "TestOracle",
+        "max_hp": 100,
+        "hp": 100,
+        "attack_power": 8,
+        "attack_variance": 2,
+        "crit_chance": 0.1,
+        "crit_multiplier": 1.5,
+        "defense": 0,
+        "status_effects": [],
+        "character_class": "Oracle",
+        "level": 1,
+        "xp": 0,
+        "xp_to_next_level": 100,
+        "gold": 75,
+        "inventory": [
+            {
+                "name": "heavy iron mace",
+                "type": "weapon",
+                "damage": 18,
+                "description": "A blunt, heavy weapon that could crush bones.",
+                "shop_price": 30
+            },
+            {
+                "name": "gleaming shield",
+                "type": "shield",
+                "defense": 5,
+                "description": "A sturdy metal shield, offering good protection.",
+                "shop_price": 20
+            }
+        ],
+        "keychain": [],
+        "stash": [],
+        "max_inventory_slots": 5,
+        "equipment": {
+            "weapon": null,
+            "shield": null,
+            "helmet": null,
+            "armor": null,
+            "cloak": null,
+            "misc": []
+        },
+        "quests": {},
+        "reputation": {},
+        "skill_points": 0,
+        "unlocked_skills": [],
+        "effects": [],
+        "attack_bonus": 0
+    },
+    "dungeon_data": {
+        "rooms_travelled": 1,
+        "current_room": {
+            "description": "You are in a translucent necrotic summoning altar. You notice A once-grand, but now tragically broken, statue of a forgotten hero or deity lies in countless pieces, its noble majesty utterly ruined by time or violence, a silent monument to fallen glory..",
+            "exits": {
+                "west": true
+            },
+            "locked_exits": {},
+            "item": {
+                "name": "medium backpack",
+                "type": "backpack",
+                "effect_type": "increase_slots",
+                "effect_value": 4,
+                "description": "A spacious backpack that offers considerably more storage.",
+                "shop_price": 120
+            },
+            "npc": null,
+            "hazard": null,
+            "monster": null,
+            "puzzle": null,
+            "shrine": null,
+            "winning_item_just_spawned": false,
+            "boss_monster_spawned": false,
+            "awaiting_winning_item_pickup": false,
+            "is_inn": false,
+            "is_horde_room": false,
+            "horde_data": null,
+            "crafting_station": null
+        },
+        "room_history": [],
+        "direction_history": []
+    }
+}
