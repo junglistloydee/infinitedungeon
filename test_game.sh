@@ -30,7 +30,7 @@ else
 fi
 
 # Test Case 4: Start a new game as a Oracle and check initial stats
-echo -e "1\nTestOracle\n4\nleave\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nsave\nquit\n4\n" | python3 infinitedungeon.py > test_output.txt
+echo -e "1\nTestOracle\n4\nleave\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nsave\nquit\n7\n" | python3 infinitedungeon.py > test_output.txt
 
 if grep -q "You have chosen the path of the Oracle" test_output.txt; then
     echo "Test Case 4 Passed: Oracle class chosen successfully."

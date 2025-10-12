@@ -1,0 +1,12 @@
+[2025-10-12 17:53:36] New game started for player: TestReaver.
+[2025-10-12 17:53:36] New game started for player: TestWhisper.
+[2025-10-12 17:53:37] New game started for player: TestProdigy.
+[2025-10-12 17:53:37] New game started for player: TestOracle.
+[2025-10-12 18:15:10] New game started for player: TestReaver.
+[2025-10-12 18:15:10] New game started for player: TestWhisper.
+[2025-10-12 18:15:11] New game started for player: TestProdigy.
+[2025-10-12 18:15:11] New game started for player: TestOracle.
+[2025-10-12 18:17:03] New game started for player: TestReaver.
+[2025-10-12 18:17:03] New game started for player: TestWhisper.
+[2025-10-12 18:17:04] New game started for player: TestProdigy.
+[2025-10-12 18:17:04] New game started for player: TestOracle.
