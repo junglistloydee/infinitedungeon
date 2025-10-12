@@ -32,6 +32,7 @@
     "player_level": 1,
     "xp_to_next_level": 100,
     "player_quests": {},
+    "player_reputation": {},
     "player_name": "TestOracle",
     "rooms_travelled": 1,
     "player_keychain": [],
@@ -41,13 +42,13 @@
     "room_history_data": [],
     "direction_history": [],
     "current_room": {
-        "description": "You are in a murky labyrinthine catacombs. You notice An illusion that momentarily flickers, revealing a blurry glimpse of another, perhaps impossible, scene before snapping back to the mundane reality of the dungeon room..",
+        "description": "You are in a damp mutated plant chamber. You notice A constant, soft murmur of voices seems to echo just beyond the threshold of hearing, never quite resolving into distinct words, creating a persistent, unsettling auditory illusion..",
         "exits": [
-            "east",
+            "north",
             "west"
         ],
         "locked_exits": {
-            "north": "rusty"
+            "east": "rusty"
         },
         "item": null,
         "npc": null,

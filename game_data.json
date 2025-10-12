@@ -742,7 +742,7 @@
     "The air is thick with the biting scent of ozone and singed rock, a clear indicator of powerful, recently discharged arcane energies that still crackle faintly in the atmosphere.",
     "Veins of shimmering, impossibly smooth crystal run through the rough stone walls, catching the light and refracting it into fleeting, rainbow motes that dance across the chamber.",
     "A chilling, unseen draft whips through the room with a sudden, icy touch, carrying the faint, unsettling whisper of ancient, disembodied voices on its unseen currents.",
-    "A collection of discarded adventurers' gear—a broken shield, a snapped sword, a torn cloak—lies scattered in a desperate heap, painting a grim tableau of a sudden, brutal end.",
+    "A collection of discarded adventurers' gear\u2014a broken shield, a snapped sword, a torn cloak\u2014lies scattered in a desperate heap, painting a grim tableau of a sudden, brutal end.",
     "The floor is covered in a fine, gritty layer of pulverized bone, crunching unnervingly underfoot with every step, a chilling reminder of those who met their end here.",
     "A single, ancient goblet, tarnished silver but intricately engraved, rests untouched on a high, unreachable ledge, glinting faintly, a tantalizing mystery of forgotten lore.",
     "The walls are disturbingly slick with a strange, oily residue that glistens ominously in the dim light, leaving a greasy film on anything it touches, and a sense of unnatural sliminess.",
@@ -1145,11 +1145,11 @@
     "backpack": 0.05,
     "shield": 0.15,
     "armor_body": 0.15,
-    "armor_cloak": 0.10,
-    "armor_helmet": 0.10,
+    "armor_cloak": 0.1,
+    "armor_helmet": 0.1,
     "weapon": 0.15,
     "consumable_healing": 0.25,
-    "consumable_other": 0.10,
+    "consumable_other": 0.1,
     "key": 0.05,
     "default": 0.05
   },
@@ -1921,7 +1921,10 @@
       "name": "Elixir of Strength",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "attack_power", "amount": 2 },
+      "effect_value": {
+        "stat": "attack_power",
+        "amount": 2
+      },
       "description": "A potent elixir that permanently increases your attack power.",
       "shop_price": 250
     },
@@ -1929,7 +1932,10 @@
       "name": "Potion of Power",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "attack_power", "amount": 1 },
+      "effect_value": {
+        "stat": "attack_power",
+        "amount": 1
+      },
       "description": "A shimmering potion that permanently increases your attack power.",
       "shop_price": 150
     },
@@ -1937,7 +1943,10 @@
       "name": "Vitality Draught",
       "type": "consumable",
       "effect_type": "stat_boost",
-      "effect_value": { "stat": "max_hp", "amount": 10 },
+      "effect_value": {
+        "stat": "max_hp",
+        "amount": 10
+      },
       "description": "A thick, red liquid that permanently increases your maximum HP.",
       "shop_price": 200
     },
@@ -1992,7 +2001,7 @@
     {
       "name": "Chronos Crystal",
       "type": "winning_item",
-      "description": "A crystal that subtly distorts time around it, causing a strange déjà vu."
+      "description": "A crystal that subtly distorts time around it, causing a strange d\u00e9j\u00e0 vu."
     },
     {
       "name": "Blade of Infinite Echoes",
@@ -2033,7 +2042,10 @@
       "name": "Potion of Perception",
       "type": "consumable",
       "effect_type": "perception_boost",
-      "effect_value": { "stat": "perception", "amount": 1 },
+      "effect_value": {
+        "stat": "perception",
+        "amount": 1
+      },
       "description": "A potion that sharpens your senses, making it easier to spot hidden dangers.",
       "shop_price": 75
     },
@@ -2248,7 +2260,8 @@
         "The mushrooms hum softly, 'We are the guardians of this place. Tread lightly, or face our wrath!'",
         "They sway gently, 'We can help you find your way... for a price.'"
       ],
-      "dialogue_conditions": []
+      "dialogue_conditions": [],
+      "faction": "myconid_colony"
     },
     {
       "name": "a disgruntled dwarven miner",
@@ -2407,6 +2420,20 @@
       "dialogues": [
         "Hmph. Another adventurer..."
       ],
+      "dialogue_reputation": [
+        {
+          "reputation_level": "friendly",
+          "dialogue": "Good to see you again, friend. Your contributions to the Iron Dwarves are greatly appreciated."
+        },
+        {
+          "reputation_level": "neutral",
+          "dialogue": "Hmph. Another adventurer..."
+        },
+        {
+          "reputation_level": "hostile",
+          "dialogue": "I'm watching you. Don't cause any trouble."
+        }
+      ],
       "current_quest_id": "any_foe_i",
       "dialogue_conditions": [
         {
@@ -2438,7 +2465,8 @@
           "value": 1,
           "dialogue": "You look like you might survive a day or two. Perhaps."
         }
-      ]
+      ],
+      "faction": "iron_dwarves"
     },
     {
       "name": "Veteran Explorer",
@@ -2479,7 +2507,8 @@
           "status": "not_completed",
           "dialogue": "You seem too green for my tasks. Perhaps assist the guard first?"
         }
-      ]
+      ],
+      "faction": "iron_dwarves"
     },
     {
       "name": "Old Wizard",
@@ -2563,7 +2592,7 @@
         }
       ]
     },
-	{
+    {
       "name": "Elara, the Collector",
       "type": "quest_giver",
       "description": "A sharp-eyed woman with a satchel full of curiosities.",
@@ -2631,6 +2660,26 @@
         "High stakes, high rewards. That's the way I like it.",
         "You win some, you lose some. It's all in the roll of the dice."
       ]
+    },
+    {
+      "name": "Borg Nine-Fingers",
+      "type": "quest_giver",
+      "description": "A gruff dwarf with a missing finger, examining a cracked wall.",
+      "faction": "iron_dwarves",
+      "dialogues": [
+        "These walls... seen better days. Reminds me of my last scrap. Lost a finger, but gained a story."
+      ],
+      "current_quest_id": "retrieve_lost_helmet"
+    },
+    {
+      "name": "Myra the Myconid",
+      "type": "quest_giver",
+      "description": "A tall, slender mushroom-person who sways gently.",
+      "faction": "myconid_colony",
+      "dialogues": [
+        "The dungeon breathes... We must listen to its whispers."
+      ],
+      "current_quest_id": "map_the_unseen"
     }
   ],
   "hazards": [
@@ -3605,7 +3654,7 @@
       "level": 24
     },
     {
-       "name": "Venomfang Serpent",
+      "name": "Venomfang Serpent",
       "description": "A massive serpent with scales that shimmer like oil on water, its fangs dripping with a sickly green venom.",
       "health": 180,
       "damage": 30,
@@ -3663,7 +3712,10 @@
       "damage_variance": 3,
       "crit_chance": 0.1,
       "crit_multiplier": 1.5,
-      "gold_drop": [ 50, 100 ],
+      "gold_drop": [
+        50,
+        100
+      ],
       "xp_reward": 100,
       "level": 5,
       "item_drop": "Elixir of Strength"
@@ -3676,7 +3728,10 @@
       "damage_variance": 4,
       "crit_chance": 0.05,
       "crit_multiplier": 1.5,
-      "gold_drop": [ 100, 200 ],
+      "gold_drop": [
+        100,
+        200
+      ],
       "xp_reward": 150,
       "level": 8,
       "item_drop": "Amulet of Protection"
@@ -3802,7 +3857,9 @@
       "name": "Altar of the Weapon Master",
       "type": "pressure_plate",
       "description": "An ancient altar stands before you, with a single pressure plate at its center. An inscription reads: 'Only a warrior's blade may pass.'",
-      "solution_items": ["weapon"],
+      "solution_items": [
+        "weapon"
+      ],
       "rewards": {
         "exit": {
           "direction": "north"
@@ -3831,7 +3888,13 @@
       "dialogue_unavailable": "Hmph. Another adventurer...",
       "required_level": 1,
       "prerequisite_quest": null,
-      "is_repeatable": false
+      "is_repeatable": false,
+      "rewards": {
+        "reputation_gain": {
+          "faction": "iron_dwarves",
+          "amount": 10
+        }
+      }
     },
     {
       "id": "any_foe_ii",
@@ -3849,7 +3912,13 @@
       "dialogue_unavailable": "You seem too green for my tasks. Perhaps assist the guard first?",
       "required_level": 3,
       "prerequisite_quest": "any_foe_i",
-      "is_repeatable": false
+      "is_repeatable": false,
+      "rewards": {
+        "reputation_gain": {
+          "faction": "iron_dwarves",
+          "amount": 15
+        }
+      }
     },
     {
       "id": "any_foe_iii",
@@ -3998,6 +4067,52 @@
       "required_level": 1,
       "prerequisite_quest": null,
       "is_repeatable": false
+    },
+    {
+      "id": "retrieve_lost_helmet",
+      "name": "Retrieve the Lost Helmet",
+      "type": "defeat_monster",
+      "target_monster": "Silver Golem",
+      "target_count": 1,
+      "reward_gold": 200,
+      "reward_xp": 300,
+      "reward_item": "iron shield",
+      "giver_npc_name": "Borg Nine-Fingers",
+      "dialogue_offer": "A Silver Golem took my prized helmet! Smash it to bits and bring back my helmet. I'll make it worth your while.",
+      "dialogue_active": "Still haven't found that golem? It's a big, shiny fellow. Can't miss it.",
+      "dialogue_complete_ready": "You've defeated the golem! My helmet! I knew you had it in you.",
+      "dialogue_complete_turn_in": "My helmet! It's a bit battered, but it's mine. Here's your reward.",
+      "required_level": 8,
+      "prerequisite_quest": null,
+      "is_repeatable": false,
+      "rewards": {
+        "reputation_gain": {
+          "faction": "iron_dwarves",
+          "amount": 25
+        }
+      }
+    },
+    {
+      "id": "map_the_unseen",
+      "name": "Map the Unseen",
+      "type": "explore",
+      "target_count": 3,
+      "reward_gold": 150,
+      "reward_xp": 250,
+      "giver_npc_name": "Myra the Myconid",
+      "dialogue_offer": "The dungeon's layout shifts, but there are places yet unseen. Map out 3 hidden rooms for us, and the colony will reward you.",
+      "dialogue_active": "The dungeon's secrets are waiting to be uncovered. You have mapped {current_count} of {target_count} hidden rooms.",
+      "dialogue_complete_ready": "You have seen the unseen! The colony is grateful for your knowledge.",
+      "dialogue_complete_turn_in": "Your knowledge will help us thrive. Take this as a token of our gratitude.",
+      "required_level": 5,
+      "prerequisite_quest": null,
+      "is_repeatable": false,
+      "rewards": {
+        "reputation_gain": {
+          "faction": "myconid_colony",
+          "amount": 20
+        }
+      }
     }
   ],
   "key_unlock_events": {
@@ -4018,49 +4133,73 @@
           "type": "buff",
           "weight": 15,
           "message": "You feel a surge of power! Your attacks are strengthened.",
-          "details": { "stat": "attack_power", "modifier": 5, "duration": 50 }
+          "details": {
+            "stat": "attack_power",
+            "modifier": 5,
+            "duration": 50
+          }
         },
         {
           "type": "buff",
           "weight": 15,
           "message": "A shimmering shield materializes around you, bolstering your defense.",
-          "details": { "stat": "defense", "modifier": 5, "duration": 50 }
+          "details": {
+            "stat": "defense",
+            "modifier": 5,
+            "duration": 50
+          }
         },
         {
           "type": "heal",
           "weight": 20,
           "message": "A warm light envelops you, healing some of your wounds.",
-          "details": { "amount": 50 }
+          "details": {
+            "amount": 50
+          }
         },
         {
           "type": "gold",
           "weight": 10,
           "message": "A small pouch of gold magically appears at your feet!",
-          "details": { "amount": 75 }
+          "details": {
+            "amount": 75
+          }
         },
         {
           "type": "curse",
           "weight": 10,
           "message": "You feel a draining presence. Your attacks feel weaker.",
-          "details": { "stat": "attack_power", "modifier": -5, "duration": 50 }
+          "details": {
+            "stat": "attack_power",
+            "modifier": -5,
+            "duration": 50
+          }
         },
         {
           "type": "curse",
           "weight": 10,
           "message": "You feel vulnerable and exposed. Your defense is lowered.",
-          "details": { "stat": "defense", "modifier": -5, "duration": 50 }
+          "details": {
+            "stat": "defense",
+            "modifier": -5,
+            "duration": 50
+          }
         },
         {
           "type": "damage",
           "weight": 10,
           "message": "A bolt of dark energy strikes you from the altar!",
-          "details": { "amount": 30 }
+          "details": {
+            "amount": 30
+          }
         },
         {
           "type": "spawn_monster",
           "weight": 10,
           "message": "The altar trembles and a spectral guardian materializes to punish your hubris!",
-          "details": { "monster_name": "spectral guardian" }
+          "details": {
+            "monster_name": "spectral guardian"
+          }
         }
       ]
     },
@@ -4073,31 +4212,47 @@
           "type": "heal",
           "weight": 40,
           "message": "The water is refreshing and pure. You feel completely revitalized!",
-          "details": { "amount": "full" }
+          "details": {
+            "amount": "full"
+          }
         },
         {
           "type": "buff",
           "weight": 30,
           "message": "The water invigorates you! You feel quicker and more resilient.",
-          "details": { "stat": "defense", "modifier": 3, "duration": 100 }
+          "details": {
+            "stat": "defense",
+            "modifier": 3,
+            "duration": 100
+          }
         },
         {
           "type": "buff",
           "weight": 20,
           "message": "A sense of clarity washes over you. Your critical hit chance increases!",
-          "details": { "stat": "crit_chance", "modifier": 0.1, "duration": 100 }
+          "details": {
+            "stat": "crit_chance",
+            "modifier": 0.1,
+            "duration": 100
+          }
         },
         {
           "type": "curse",
           "weight": 5,
           "message": "The water has a bitter aftertaste. You feel slightly nauseous.",
-          "details": { "stat": "attack_power", "modifier": -2, "duration": 20 }
+          "details": {
+            "stat": "attack_power",
+            "modifier": -2,
+            "duration": 20
+          }
         },
         {
           "type": "spawn_monster",
           "weight": 5,
           "message": "The water turns murky and an acidic ooze slithers out of the fountain!",
-          "details": { "monster_name": "acidic ooze" }
+          "details": {
+            "monster_name": "acidic ooze"
+          }
         }
       ]
     }
@@ -4329,5 +4484,17 @@
         }
       ]
     }
-  }
+  },
+  "factions": [
+    {
+      "id": "iron_dwarves",
+      "name": "The Iron Dwarves",
+      "description": "A clan of sturdy and industrious dwarves who value strength and craftsmanship."
+    },
+    {
+      "id": "myconid_colony",
+      "name": "The Myconid Colony",
+      "description": "A collective of sentient mushroom-folk who seek balance and harmony in the dungeon's ecosystem."
+    }
+  ]
 }
