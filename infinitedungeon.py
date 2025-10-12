@@ -779,6 +779,8 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             if monster_current_hp <= 0:
                 print(f"The {monster_name} collapses, defeated!")
                 gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
+                monster_data = None
+                break
         elif verb == "skill":
             if not player_unlocked_skills:
                 print("You have not unlocked any skills yet.")
@@ -2308,7 +2310,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             if DEBUG: # Wrapped debug calls
                 debug.close_debug_log() # Close log on game over
             return 'lose', monsters_defeated_this_run, rooms_travelled
-        if monster_was_defeated and current_room.monster is None:
+        if monster_was_defeated and monster_data is None:
+            current_room.monster = None
             monsters_defeated_this_run += 1
             print(f"\nThe monster is defeated. The room is now safe.")
             display_room_content_summary(current_room, rooms_travelled)
