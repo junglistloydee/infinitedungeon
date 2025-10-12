@@ -20,11 +20,8 @@ def log_event(message):
         print(f"Error writing to history log: {e}")
 
 # Enable debug (THIS IS THE MASTER SWITCH FOR DEBUGGING)
-DEBUG = True # Set to True to enable debug prints and file logging, False to disable
+DEBUG = False # Set to True to enable debug prints and file logging, False to disable
 
-# Initialize debug log based on the DEBUG flag
-if DEBUG: # Wrapped debug initialization
-    debug.initialize_debug_log(DEBUG)
 
 # --- Sound Manager ---
 sound_manager = Sound(sound_enabled=True)
@@ -2294,7 +2291,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
     """
-    global special_event_after_unlock
+    global DEBUG, special_event_after_unlock
     current_defense_bonus = 0
     current_crit_chance_bonus = 0.0
     # Helper function to process puzzle rewards
@@ -2489,6 +2486,16 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 continue
 
         # --- Process Commands ---
+
+        if verb == "/debug":
+            DEBUG = not DEBUG
+            if DEBUG:
+                debug.initialize_debug_log(True)
+                print("Debug mode ON.")
+            else:
+                debug.close_debug_log()
+                print("Debug mode OFF.")
+            continue
 
         if verb == "quit":
             print("Thanks for playing!")
@@ -3935,6 +3942,13 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 def main():
     """The main function to run the game."""
+    global DEBUG
+    if "debug" in sys.argv or "/debug" in sys.argv:
+        DEBUG = True
+
+    if DEBUG:
+        debug.initialize_debug_log(True)
+
     meta_progress = load_meta_progress()
     while True: # This loop keeps the main menu active
         monsters_defeated_this_run = 0

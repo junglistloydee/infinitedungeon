@@ -1,3 +1,7 @@
 build/
 dist/
 *.spec
+__pycache__/
+*.txt
+savegame.json
+metaprogress.json
