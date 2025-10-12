@@ -726,7 +726,9 @@
     "sacred altar",
     "sacred grove",
     "scorched earth",
-    "horde room"
+    "horde room",
+    "Altar",
+    "Anvil"
   ],
   "details": [
     "A fine, powdery dust, impossibly ancient, lies undisturbed across every surface, thick enough to muffle footsteps and hinting at millennia of stagnation.",
@@ -2077,6 +2079,24 @@
       "effect_value": "Blindness",
       "description": "A small, throwable orb that creates a blinding flash of light.",
       "shop_price": 75
+    },
+    {
+      "name": "Monster Fang",
+      "type": "crafting_material",
+      "description": "A sharp fang from a dungeon creature.",
+      "shop_price": 10
+    },
+    {
+      "name": "Ectoplasm",
+      "type": "crafting_material",
+      "description": "A viscous, otherworldly substance.",
+      "shop_price": 15
+    },
+    {
+      "name": "Iron Ore",
+      "type": "crafting_material",
+      "description": "A chunk of raw iron ore.",
+      "shop_price": 5
     }
   ],
   "npcs": [
@@ -4495,6 +4515,53 @@
       "id": "myconid_colony",
       "name": "The Myconid Colony",
       "description": "A collective of sentient mushroom-folk who seek balance and harmony in the dungeon's ecosystem."
+    }
+  ],
+  "crafting_recipes": [
+    {
+      "name": "Iron Sword",
+      "ingredients": [
+        {"name": "Iron Ore", "quantity": 2},
+        {"name": "Monster Fang", "quantity": 1}
+      ],
+      "result": "steel sword"
+    },
+    {
+      "name": "Healing Potion",
+      "ingredients": [
+        {"name": "Ectoplasm", "quantity": 1},
+        {"name": "Monster Fang", "quantity": 1}
+      ],
+      "result": "healing potion"
+    }
+  ],
+  "enchantments": [
+    {
+      "name": "Fiery",
+      "type": "weapon",
+      "effect": {
+        "damage_boost": {
+          "type": "fire",
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "Venomous",
+      "type": "weapon",
+      "effect": {
+        "status_effect": {
+          "name": "Poison",
+          "chance": 0.3
+        }
+      }
+    },
+    {
+      "name": "Protective",
+      "type": "armor",
+      "effect": {
+        "defense_boost": 5
+      }
     }
   ]
 }

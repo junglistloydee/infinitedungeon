@@ -181,6 +181,9 @@ SHRINE_SPAWN_CHANCE = 0.08
 # --- HORDE ROOM CONSTANTS ---
 HORDE_SPAWN_CHANCE = 0.05
 
+# --- CRAFTING STATION CONSTANTS ---
+CRAFTING_STATION_SPAWN_CHANCE = 0.05
+
 # --- SHOP CONSTANTS ---
 SELL_PRICE_MULTIPLIER = 0.5
 
@@ -709,6 +712,14 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     # Defense values are now from the equipped item dictionaries
     # MODIFIED: Include equipped_cloak in total_player_defense calculation
     total_player_defense = calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet) + current_defense_bonus
+
+    for item in [equipped_armor_value, equipped_cloak, equipped_helmet, player_shield_value]:
+        if item and item.get('enchantment'):
+            enchantment_name = item['enchantment']
+            enchantment = next((e for e in GAME_DATA.get('enchantments', []) if e['name'] == enchantment_name), None)
+            if enchantment and 'defense_boost' in enchantment['effect']:
+                total_player_defense += enchantment['effect']['defense_boost']
+
     for effect in player_status_effects:
         if effect['name'] == 'Curse':
             total_player_defense += effect['effect']['modifier']
@@ -782,6 +793,19 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                     if random.random() < effect['chance']:
                         monster_status_effects.append(copy.deepcopy(effect))
                         print(f"The {monster_name} is now {effect['name']}!")
+
+            if equipped_weapon and equipped_weapon.get('enchantment'):
+                enchantment_name = equipped_weapon['enchantment']
+                enchantment = next((e for e in GAME_DATA.get('enchantments', []) if e['name'] == enchantment_name), None)
+                if enchantment:
+                    if 'damage_boost' in enchantment['effect']:
+                        damage_dealt += enchantment['effect']['damage_boost']['value']
+                        print(f"Your weapon's {enchantment_name} enchantment deals an extra {enchantment['effect']['damage_boost']['value']} damage!")
+                    if 'status_effect' in enchantment['effect']:
+                        if random.random() < enchantment['effect']['status_effect']['chance']:
+                            monster_status_effects.append(copy.deepcopy(enchantment['effect']['status_effect']))
+                            print(f"The {monster_name} is now {enchantment['effect']['status_effect']['name']}!")
+
             action_taken = True
 
             if monster_current_hp <= 0:
@@ -911,6 +935,16 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
                     else:
                         if DEBUG:
                             debug.debug_print(f"Monster drop item '{item_drop_name}' not found in game data.")
+
+                if random.random() < 0.1:
+                    crafting_materials = [item for item in ALL_ITEMS if item.get('type') == 'crafting_material']
+                    if crafting_materials:
+                        material_to_drop = random.choice(crafting_materials)
+                        if len(player_inventory) < current_max_inventory_slots:
+                            player_inventory.append(copy.deepcopy(material_to_drop))
+                            print(f"The monster dropped a {material_to_drop['name']}!")
+                        else:
+                            print(f"The monster dropped a {material_to_drop['name']}, but your inventory is full!")
 
                 for q_id, q_data in player_quests.items():
                     quest_def = get_quest_by_id(q_id)
@@ -1483,7 +1517,7 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
         else:
             print("Invalid shop command. Type 'buy', 'sell', or 'exit'.")
 
-def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager):
+def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash):
     """
     Manages the inn interaction, allowing the player to rest and talk to quest givers.
     Returns updated player state.
@@ -1495,7 +1529,7 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
 
     while True:
         print(f"\nYour HP: {player_hp}/{max_hp}")
-        print("Inn commands: rest / talk / leave")
+        print("Inn commands: rest / talk / stash / unstash / leave")
         inn_command_input = input("Inn Action> ").lower().strip()
         parts = inn_command_input.split()
 
@@ -1531,18 +1565,51 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
                 else:
                     print(f"You don't see anyone named '{npc_name_to_talk}' here.")
 
+        elif verb == "stash":
+            item_to_stash_name = " ".join(parts[1:])
+            item_to_stash = None
+            for item in player_inventory:
+                if item['name'].lower() == item_to_stash_name.lower():
+                    item_to_stash = item
+                    break
+
+            if item_to_stash:
+                player_inventory.remove(item_to_stash)
+                stash.append(item_to_stash)
+                print(f"You stashed the {item_to_stash['name']}.")
+            else:
+                print("You don't have that item.")
+
+        elif verb == "unstash":
+            item_to_unstash_name = " ".join(parts[1:])
+            item_to_unstash = None
+            for item in stash:
+                if item['name'].lower() == item_to_unstash_name.lower():
+                    item_to_unstash = item
+                    break
+
+            if item_to_unstash:
+                if len(player_inventory) < current_max_inventory_slots:
+                    stash.remove(item_to_unstash)
+                    player_inventory.append(item_to_unstash)
+                    print(f"You unstashed the {item_to_unstash['name']}.")
+                else:
+                    print("Your inventory is full.")
+            else:
+                print("You don't have that item in your stash.")
+
         elif verb == "leave":
             print("You step out of the inn, back into the dungeon's gloom.")
             sound_manager.stop_music()
             sound_manager.play_music('ambient_music')
-            return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
+            return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash
 
         else:
-            print("Invalid inn command. Type 'rest', 'talk', or 'leave'.")
+            print("Invalid inn command. Type 'rest', 'talk', 'stash', 'unstash', or 'leave'.")
 
     sound_manager.stop_music()
     sound_manager.play_music('ambient_music')
-    return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain
+    return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash
 
 
 def interact_with_quest_giver(npc, player_quests, player_reputation, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager):
@@ -1653,7 +1720,7 @@ def interact_with_quest_giver(npc, player_quests, player_reputation, player_leve
     return player_quests, player_reputation, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level
 
 # MODIFIED: Added equipped_cloak to parameters and save state
-def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history): # Added player_keychain and player_attack_bonus
+def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, stash):
     """Saves the current game state to 'savegame.json'."""
     game_state = {
         'player_hp': player_hp,
@@ -1679,6 +1746,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
         'rooms_travelled': rooms_travelled,
         'player_keychain': player_keychain, # Added to save state
         'equipped_misc_items': equipped_misc_items,
+        'stash': stash,
         'player_effects': player_effects,
         'special_event_after_unlock': special_event_after_unlock,
         'room_history_data': [
@@ -1829,16 +1897,17 @@ def load_game():
                player_keychain_loaded, \
                game_state.get('equipped_misc_items', []), \
                game_state.get('player_effects', []), \
-               room_history_loaded, direction_history_loaded
+               room_history_loaded, direction_history_loaded, \
+               game_state.get('stash', [])
 
     except FileNotFoundError:
         print("\nNo saved game found. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
     except json.JSONDecodeError:
         print("\nError: Corrupted save file. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 
 # --- Meta-Progression Functions ---
@@ -1920,6 +1989,13 @@ class Room:
         if random.random() < INN_SPAWN_CHANCE:
             self.is_inn = True
             return # Prevent other content from spawning
+
+        if random.random() < CRAFTING_STATION_SPAWN_CHANCE:
+            crafting_station_type = random.choice(["Altar", "Anvil"])
+            self.description = f"You enter a room with a mystical {crafting_station_type}."
+            self.exits = {"south": True}
+            self.crafting_station = crafting_station_type
+            return
 
         if random.random() < HORDE_SPAWN_CHANCE and HORDES:
             self.is_horde_room = True
@@ -2205,7 +2281,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -2290,6 +2366,11 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
         return player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
 
     display_room_content_summary(current_room, rooms_travelled, direction_history)
+
+    if hasattr(current_room, 'crafting_station'):
+        print(f"You are in a room with a {current_room.crafting_station}.")
+        print("You can use the 'craft' or 'enchant' commands here.")
+
     # --- Initial player state dump for the session ---
     if DEBUG: # Wrapped debug calls
         debug.debug_player_data(player_inventory, player_keychain, current_max_inventory_slots, player_gold, "Player State at Room Entry")
@@ -2442,6 +2523,88 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
         elif verb == "skill":
             player_skill_points, player_unlocked_skills = handle_skill_tree(player_class, player_level, player_skill_points, player_unlocked_skills)
 
+        elif verb == "craft":
+            if hasattr(current_room, 'crafting_station'):
+                crafting_recipes = GAME_DATA.get('crafting_recipes', [])
+                if not crafting_recipes:
+                    print("There are no crafting recipes available.")
+                else:
+                    print("Available crafting recipes:")
+                    for i, recipe in enumerate(crafting_recipes):
+                        print(f"  {i+1}. {recipe['name']}")
+
+                    choice = input("Enter the number of the item you want to craft, or 'back': ").strip()
+                    if choice.lower() == 'back':
+                        continue
+
+                    try:
+                        recipe_index = int(choice) - 1
+                        if 0 <= recipe_index < len(crafting_recipes):
+                            selected_recipe = crafting_recipes[recipe_index]
+                            can_craft = True
+                            for ingredient in selected_recipe['ingredients']:
+                                if not has_player_enough_items(player_inventory, ingredient['name'], ingredient['quantity']):
+                                    can_craft = False
+                                    print(f"You don't have enough {ingredient['name']}.")
+                                    break
+
+                            if can_craft:
+                                for ingredient in selected_recipe['ingredients']:
+                                    remove_items_from_inventory(player_inventory, ingredient['name'], ingredient['quantity'])
+
+                                result_item = get_item_by_name(selected_recipe['result'])
+                                if result_item:
+                                    player_inventory.append(copy.deepcopy(result_item))
+                                    print(f"You successfully crafted a {result_item['name']}!")
+                                else:
+                                    print("Crafting failed: result item not found.")
+                        else:
+                            print("Invalid recipe number.")
+                    except ValueError:
+                        print("Invalid input.")
+            else:
+                print("You can't craft items here.")
+
+        elif verb == "enchant":
+            if hasattr(current_room, 'crafting_station'):
+                enchantments = GAME_DATA.get('enchantments', [])
+                if not enchantments:
+                    print("There are no enchantments available.")
+                else:
+                    print("Available enchantments:")
+                    for i, enchantment in enumerate(enchantments):
+                        print(f"  {i+1}. {enchantment['name']}")
+
+                    choice = input("Enter the number of the enchantment you want to apply, or 'back': ").strip()
+                    if choice.lower() == 'back':
+                        continue
+
+                    try:
+                        enchantment_index = int(choice) - 1
+                        if 0 <= enchantment_index < len(enchantments):
+                            selected_enchantment = enchantments[enchantment_index]
+
+                            item_to_enchant_name = input("Enter the name of the item to enchant: ").strip()
+                            item_to_enchant = None
+                            for item in player_inventory:
+                                if item['name'].lower() == item_to_enchant_name.lower():
+                                    item_to_enchant = item
+                                    break
+
+                            if item_to_enchant:
+                                if item_to_enchant.get('type') == selected_enchantment.get('type'):
+                                    item_to_enchant['enchantment'] = selected_enchantment['name']
+                                    print(f"You successfully enchanted the {item_to_enchant['name']} with {selected_enchantment['name']}!")
+                                else:
+                                    print(f"You can't apply this enchantment to a {item_to_enchant.get('type')}.")
+                            else:
+                                print("You don't have that item.")
+                        else:
+                            print("Invalid enchantment number.")
+                    except ValueError:
+                        print("Invalid input.")
+            else:
+                print("You can't enchant items here.")
 
         elif verb == "look":
             display_room_content_summary(current_room, rooms_travelled, direction_history)
@@ -3609,7 +3772,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         elif verb == "save":
             # MODIFIED: Added equipped_cloak and player_attack_bonus to save_game parameters
-            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history) # Pass keychain and bonus
+            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, stash) # Pass keychain and bonus
 
         elif verb == "ohvendor":
             guvna_npc_def = next((n for n in NPCs if n.get('name') == 'Stranger' and n.get('type') == 'vendor'), None)
@@ -3629,8 +3792,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("You try to summon the vendor, but he doesn't seem to respond. Perhaps he's not in this realm?")
 
         elif verb == "ohinn":
-            player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
-                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+            player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
+                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
             display_room_content_summary(current_room, rooms_travelled, direction_history)
 
         elif verb == "search":
@@ -3801,6 +3964,7 @@ def main():
             player_effects = []
             room_history = []
             direction_history = []
+            stash = []
 
             print("=" * 40)
             print("Starting a new adventure...")
@@ -3852,8 +4016,8 @@ def main():
             # --- NEW: Handle if the first room is an inn ---
             while getattr(current_room, 'is_inn', False):
                 print("You stumble upon a cozy inn right at the start of your adventure!")
-                player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
-                    handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+                player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
+                    handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
 
                 print("You leave the inn, ready to begin your journey.")
                 current_room = Room(player_level, player_quests) # Generate a new room to start in
@@ -3871,7 +4035,7 @@ def main():
             # after "winning" or after "losing" if they choose to restart.
             while True:
                 # MODIFIED: Added equipped_cloak and player_attack_bonus to game_loop parameters
-                game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run)
+                game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash)
 
                 rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
                 shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
@@ -3952,7 +4116,7 @@ def main():
             # Load Game
             loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
             loaded_attack_power, loaded_attack_bonus, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
-            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, player_effects, room_history, direction_history = load_game() # Get loaded_player_keychain, equipped_cloak, and player_attack_bonus
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, player_effects, room_history, direction_history, stash = load_game() # Get loaded_player_keychain, equipped_cloak, and player_attack_bonus
 
             print("=" * 40)
             if loaded_hp is not None:
@@ -4033,14 +4197,14 @@ def main():
                     # --- NEW: Handle if a loaded room is an inn ---
                     while getattr(current_room, 'is_inn', False):
                         print("You load your game and find yourself in a welcoming inn.")
-                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
-                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
+                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
 
                         print("You leave the inn to continue your journey.")
                         current_room = Room(player_level, player_quests) # Generate a new room
                     # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, monsters_defeated_this_run) # Pass keychain
+                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, monsters_defeated_this_run, stash)
 
                     rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
                     shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
