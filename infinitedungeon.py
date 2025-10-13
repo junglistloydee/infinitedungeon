@@ -2865,8 +2865,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
                         handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon)
 
-                    print("You leave the inn to continue your journey.")
-                    current_room = Room(player_level, player_quests) # Generate a new room
+                        print("You leave the inn to continue your journey.")
+                        current_room = Room(player_level, player_quests) # Generate a new room
                 # --- END NEW ---
                 sound_manager.play_music('ambient_music') # Always play ambient after moving, as inn handles its own music.
                 rooms_travelled += 1
