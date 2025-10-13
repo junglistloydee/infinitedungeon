@@ -728,7 +728,8 @@
     "scorched earth",
     "horde room",
     "Altar",
-    "Anvil"
+    "Anvil",
+    "Hideout"
   ],
   "details": [
     "A fine, powdery dust, impossibly ancient, lies undisturbed across every surface, thick enough to muffle footsteps and hinting at millennia of stagnation.",
@@ -1294,6 +1295,13 @@
       "key_type": "bone",
       "description": "A macabre key, intricately carved from a bone.",
       "shop_price": 10
+    },
+    {
+      "name": "Hideout Key",
+      "type": "key",
+      "key_type": "hideout",
+      "description": "A strange key that feels warm to the touch. It seems to lead to a safe place.",
+      "shop_price": 500
     },
     {
       "name": "healing potion",
@@ -2121,6 +2129,19 @@
         "medium backpack",
         "leather jerkin",
         "hooded cloak"
+      ]
+    },
+    {
+      "name": "Key Vendor",
+      "type": "vendor",
+      "description": "A mysterious figure specializing in rare and unusual keys. He seems to appear only in the inn.",
+      "dialogues": [
+        "Looking for a special key? You've come to the right place.",
+        "Every lock has a key. I just happen to have the one you need.",
+        "This one is special. It leads to a place of your own."
+      ],
+      "shop_stock": [
+        "Hideout Key"
       ]
     },
     {

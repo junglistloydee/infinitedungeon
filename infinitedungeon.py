@@ -1518,7 +1518,35 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
         else:
             print("Invalid shop command. Type 'buy', 'sell', or 'exit'.")
 
-def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash):
+def handle_hideout(stash):
+    """
+    Manages the player's personal hideout.
+    Returns the updated stash.
+    """
+    print("\n--- Your Personal Hideout ---")
+    print("A quiet, personal space. You can stash items here.")
+
+    while True:
+        print("\nHideout commands: stash / unstash / leave")
+        hideout_command_input = input("Hideout Action> ").lower().strip()
+        parts = hideout_command_input.split()
+
+        if not parts:
+            continue
+
+        verb = parts[0]
+
+        if verb == "stash":
+            print("Stash functionality is not yet implemented.")
+        elif verb == "unstash":
+            print("Unstash functionality is not yet implemented.")
+        elif verb == "leave":
+            print("You leave your hideout.")
+            return stash
+        else:
+            print("Invalid hideout command.")
+
+def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon):
     """
     Manages the inn interaction, allowing the player to rest and talk to quest givers.
     Returns updated player state.
@@ -1530,7 +1558,10 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
 
     while True:
         print(f"\nYour HP: {player_hp}/{max_hp}")
-        print("Inn commands: rest / talk / stash / unstash / leave")
+        if has_hideout_key:
+            print("Inn commands: rest / talk / stash / unstash / enter hideout / leave")
+        else:
+            print("Inn commands: rest / talk / stash / unstash / leave")
         inn_command_input = input("Inn Action> ").lower().strip()
         parts = inn_command_input.split()
 
@@ -1547,7 +1578,7 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
                 print("\nYou are already at full health and feeling great.")
 
         elif verb == "talk":
-            quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver']
+            quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver' or n.get('name') == 'Key Vendor']
             if not quest_givers:
                 print("The inn is quiet today; no one seems to have any quests.")
                 continue
@@ -1560,7 +1591,13 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
             else:
                 npc_name_to_talk = " ".join(parts[1:])
                 chosen_npc = next((n for n in quest_givers if n['name'].lower() == npc_name_to_talk.lower()), None)
-                if chosen_npc:
+
+                if chosen_npc and chosen_npc['name'] == 'Key Vendor':
+                    player_gold, player_inventory, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_keychain, equipped_misc_items = \
+                        handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, chosen_npc, player_keychain, player_level, sound_manager, [])
+                    if any(item.get('key_type') == 'hideout' for item in player_keychain):
+                        has_hideout_key = True
+                elif chosen_npc:
                     player_quests, player_reputation, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level = \
                         interact_with_quest_giver(chosen_npc, player_quests, player_reputation, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
                 else:
@@ -1599,18 +1636,24 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
             else:
                 print("You don't have that item in your stash.")
 
+        elif verb == "enter" and "hideout" in parts:
+            if has_hideout_key:
+                stash = handle_hideout(stash)
+            else:
+                print("You don't have a key to a hideout.")
+
         elif verb == "leave":
             print("You step out of the inn, back into the dungeon's gloom.")
             sound_manager.stop_music()
             sound_manager.play_music('ambient_music')
-            return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash
+            return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key
 
         else:
             print("Invalid inn command. Type 'rest', 'talk', 'stash', 'unstash', or 'leave'.")
 
     sound_manager.stop_music()
     sound_manager.play_music('ambient_music')
-    return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash
+    return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key
 
 
 def interact_with_quest_giver(npc, player_quests, player_reputation, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager):
@@ -1721,7 +1764,7 @@ def interact_with_quest_giver(npc, player_quests, player_reputation, player_leve
     return player_quests, player_reputation, player_inventory, player_gold, player_xp, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level
 
 # MODIFIED: Added equipped_cloak to parameters and save state
-def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, stash, player_class, player_skill_points, player_unlocked_skills, equipped_helmet):
+def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, stash, player_class, player_skill_points, player_unlocked_skills, equipped_helmet, has_hideout_key):
     """Saves the current game state to 'savegame.json'."""
     game_state = {
         'player_hp': player_hp,
@@ -1753,6 +1796,7 @@ def save_game(player_hp, max_hp, player_inventory, current_room, current_max_inv
         'player_skill_points': player_skill_points,
         'player_unlocked_skills': player_unlocked_skills,
         'equipped_helmet': equipped_helmet,
+        'has_hideout_key': has_hideout_key,
         'special_event_after_unlock': special_event_after_unlock,
         'room_history_data': [
             {
@@ -1907,16 +1951,17 @@ def load_game():
                game_state.get('player_class', None), \
                 game_state.get('player_skill_points', 0), \
                 game_state.get('player_unlocked_skills', []), \
-                game_state.get('equipped_helmet', None)
+                game_state.get('equipped_helmet', None), \
+                game_state.get('has_hideout_key', False)
 
     except FileNotFoundError:
         print("\nNo saved game found. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
     except json.JSONDecodeError:
         print("\nError: Corrupted save file. Starting a new adventure.")
         # MODIFIED: Added None for equipped_cloak and player_attack_bonus in return tuple
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
 
 
 # --- Meta-Progression Functions ---
@@ -2290,7 +2335,7 @@ class Room:
 
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
-def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=None):
+def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, has_hideout_key, seed=None):
     """
     This function contains the main game loop logic for active gameplay.
     It returns a string indicating the game outcome: 'continue_adventure', 'lose', 'quit', or 'return_to_menu'.
@@ -3791,7 +3836,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         elif verb == "save":
             # MODIFIED: Added equipped_cloak and player_attack_bonus to save_game parameters
-            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, stash, player_class, player_skill_points, player_unlocked_skills, equipped_helmet) # Pass keychain and bonus
+            save_game(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, stash, player_class, player_skill_points, player_unlocked_skills, equipped_helmet, has_hideout_key) # Pass keychain and bonus
 
         elif verb == "ohvendor":
             guvna_npc_def = next((n for n in NPCs if n.get('name') == 'Stranger' and n.get('type') == 'vendor'), None)
@@ -3811,8 +3856,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("You try to summon the vendor, but he doesn't seem to respond. Perhaps he's not in this realm?")
 
         elif verb == "ohinn":
-            player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
-                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
+            player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
+                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon)
             display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
         elif verb == "search":
@@ -3959,13 +4004,14 @@ def main():
         print(MAIN_SCREEN_TEXT)
         main_menu_choice = input("Enter your choice: ").strip()
 
-
+        if main_menu_choice == '1':
+            start_new_game(meta_progress, seed=time.time())
 
         elif main_menu_choice == '2':
             # Load Game
             loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
             loaded_attack_power, loaded_attack_bonus, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
-            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, loaded_player_effects, loaded_room_history, loaded_direction_history, loaded_stash, loaded_player_class, loaded_player_skill_points, loaded_player_unlocked_skills, loaded_equipped_helmet = load_game()
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, loaded_player_effects, loaded_room_history, loaded_direction_history, loaded_stash, loaded_player_class, loaded_player_skill_points, loaded_player_unlocked_skills, loaded_equipped_helmet, has_hideout_key = load_game()
 
             print("=" * 40)
             if loaded_hp is not None:
@@ -4055,14 +4101,14 @@ def main():
                     # --- NEW: Handle if a loaded room is an inn ---
                     while getattr(current_room, 'is_inn', False):
                         print("You load your game and find yourself in a welcoming inn.")
-                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash = \
-                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash)
+                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
+                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon)
 
                         print("You leave the inn to continue your journey.")
                         current_room = Room(player_level, player_quests) # Generate a new room
                     # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=None)
+                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, has_hideout_key, seed=None)
 
                     rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
                     shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
@@ -4188,7 +4234,7 @@ def start_new_game(meta_progress, seed, is_daily_challenge=False):
     player_crit_chance = BASE_PLAYER_CRIT_CHANCE
     player_crit_multiplier = BASE_PLAYER_CRIT_MULTIPLIER
     current_max_inventory_slots = 5
-    player_gold = 75
+    player_gold = 500
     player_shield_value = None
     equipped_armor_value = None
     equipped_cloak = None
@@ -4206,6 +4252,7 @@ def start_new_game(meta_progress, seed, is_daily_challenge=False):
     room_history = []
     direction_history = []
     stash = []
+    has_hideout_key = False
 
     player_name = input(player_name_prompt).strip()
     if not player_name:
@@ -4226,6 +4273,7 @@ def start_new_game(meta_progress, seed, is_daily_challenge=False):
         except ValueError:
             print("Invalid input. Please enter a number.")
     player_class = class_choices[class_choice_index]
+    print(f"You have chosen the path of the {player_class}.")
     class_data = character_classes[player_class]
     max_hp = class_data['starting_stats']['max_hp']
     player_hp = max_hp
@@ -4243,7 +4291,7 @@ def start_new_game(meta_progress, seed, is_daily_challenge=False):
     current_room = Room(player_level, player_quests)
     rooms_travelled = 1
     initial_rooms_travelled = 1
-    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=seed if is_daily_challenge else None)
+    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, has_hideout_key, seed=seed if is_daily_challenge else None)
 
     score = (rooms_travelled - initial_rooms_travelled) * 100 + monsters_defeated_this_run * 50
     shards_earned = (rooms_travelled - initial_rooms_travelled) + (monsters_defeated_this_run * 5)
