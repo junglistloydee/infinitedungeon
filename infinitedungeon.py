@@ -1274,7 +1274,7 @@ def handle_gambler(player_gold, gambler_data):
 
     return player_gold
 
-def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet, player_class, player_unlocked_skills):
+def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet, player_class, player_unlocked_skills, player_skill_points):
     horde_data = current_room.horde_data
     horde_name = horde_data['name']
     horde_monsters = horde_data['monsters']
@@ -1331,7 +1331,7 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
             else:
                 print("You would have received a special item, but your inventory is full!")
 
-    return 'continue', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde
+    return 'continue', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde, player_skill_points
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
 def handle_shop(player_gold, player_inventory, current_max_inventory_slots, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, vendor_data, player_keychain, player_level, sound_manager, equipped_misc_items):
@@ -2425,8 +2425,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
 
     if current_room.is_horde_room:
-        game_result, player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde = \
-            handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet, player_class, player_unlocked_skills)
+        game_result, player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde, player_skill_points = \
+            handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
         monsters_defeated_this_run += monsters_defeated_in_horde
         if game_result == 'lose':
             return 'lose', monsters_defeated_this_run, rooms_travelled
@@ -2862,8 +2862,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room = Room(player_level, player_quests, entry_direction=direction)
                 # --- NEW: Handle if the new room is an inn ---
                 while getattr(current_room, 'is_inn', False):
-                    player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain = \
-                        handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager)
+                        player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
+                        handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon)
 
                     print("You leave the inn to continue your journey.")
                     current_room = Room(player_level, player_quests) # Generate a new room
@@ -4342,7 +4342,7 @@ def main():
             # Load Game
             loaded_hp, loaded_max_hp, loaded_inventory, loaded_room, loaded_max_slots, loaded_gold, loaded_shield, loaded_armor, loaded_cloak, \
             loaded_attack_power, loaded_attack_bonus, loaded_attack_variance, loaded_crit_chance, loaded_crit_multiplier, loaded_equipped_weapon, \
-            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, loaded_player_effects, loaded_room_history, loaded_direction_history, loaded_stash, loaded_player_class, loaded_player_skill_points, loaded_player_unlocked_skills, loaded_equipped_helmet = load_game()
+            loaded_xp, loaded_level, loaded_xp_to_next_level, loaded_player_quests, loaded_player_reputation, loaded_player_name, loaded_rooms_travelled, loaded_player_keychain, loaded_misc_items, loaded_player_effects, loaded_room_history, loaded_direction_history, loaded_stash, loaded_player_class, loaded_player_skill_points, loaded_player_unlocked_skills, loaded_equipped_helmet, has_hideout_key = load_game()
 
             print("=" * 40)
             if loaded_hp is not None:
@@ -4439,7 +4439,7 @@ def main():
                         current_room = Room(player_level, player_quests) # Generate a new room
                     # --- END NEW ---
                     # MODIFIED: Added equipped_cloak to game_loop parameters
-                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, seed=None)
+                    game_result, monsters_defeated_this_run, rooms_travelled = game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history, direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, has_hideout_key, seed=None)
 
                     rooms_explored_this_run = rooms_travelled - initial_rooms_travelled
                     shards_earned = rooms_explored_this_run + (monsters_defeated_this_run * 5)
