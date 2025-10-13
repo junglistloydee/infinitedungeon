@@ -1518,10 +1518,10 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
         else:
             print("Invalid shop command. Type 'buy', 'sell', or 'exit'.")
 
-def handle_hideout(stash):
+def handle_hideout(stash, player_inventory, current_max_inventory_slots):
     """
     Manages the player's personal hideout.
-    Returns the updated stash.
+    Returns the updated stash and player_inventory.
     """
     print("\n--- Your Personal Hideout ---")
     print("A quiet, personal space. You can stash items here.")
@@ -1537,12 +1537,39 @@ def handle_hideout(stash):
         verb = parts[0]
 
         if verb == "stash":
-            print("Stash functionality is not yet implemented.")
+            item_to_stash_name = " ".join(parts[1:])
+            item_to_stash = None
+            for item in player_inventory:
+                if item['name'].lower() == item_to_stash_name.lower():
+                    item_to_stash = item
+                    break
+
+            if item_to_stash:
+                player_inventory.remove(item_to_stash)
+                stash.append(item_to_stash)
+                print(f"You stashed the {item_to_stash['name']}.")
+            else:
+                print("You don't have that item.")
         elif verb == "unstash":
-            print("Unstash functionality is not yet implemented.")
+            item_to_unstash_name = " ".join(parts[1:])
+            item_to_unstash = None
+            for item in stash:
+                if item['name'].lower() == item_to_unstash_name.lower():
+                    item_to_unstash = item
+                    break
+
+            if item_to_unstash:
+                if len(player_inventory) < current_max_inventory_slots:
+                    stash.remove(item_to_unstash)
+                    player_inventory.append(item_to_unstash)
+                    print(f"You unstashed the {item_to_unstash['name']}.")
+                else:
+                    print("Your inventory is full.")
+            else:
+                print("You don't have that item in your stash.")
         elif verb == "leave":
             print("You leave your hideout.")
-            return stash
+            return stash, player_inventory
         else:
             print("Invalid hideout command.")
 
@@ -1559,9 +1586,9 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
     while True:
         print(f"\nYour HP: {player_hp}/{max_hp}")
         if has_hideout_key:
-            print("Inn commands: rest / talk / stash / unstash / enter hideout / leave")
+            print("Inn commands: rest / talk / enter hideout / leave")
         else:
-            print("Inn commands: rest / talk / stash / unstash / leave")
+            print("Inn commands: rest / talk / leave")
         inn_command_input = input("Inn Action> ").lower().strip()
         parts = inn_command_input.split()
 
@@ -1603,42 +1630,9 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
                 else:
                     print(f"You don't see anyone named '{npc_name_to_talk}' here.")
 
-        elif verb == "stash":
-            item_to_stash_name = " ".join(parts[1:])
-            item_to_stash = None
-            for item in player_inventory:
-                if item['name'].lower() == item_to_stash_name.lower():
-                    item_to_stash = item
-                    break
-
-            if item_to_stash:
-                player_inventory.remove(item_to_stash)
-                stash.append(item_to_stash)
-                print(f"You stashed the {item_to_stash['name']}.")
-            else:
-                print("You don't have that item.")
-
-        elif verb == "unstash":
-            item_to_unstash_name = " ".join(parts[1:])
-            item_to_unstash = None
-            for item in stash:
-                if item['name'].lower() == item_to_unstash_name.lower():
-                    item_to_unstash = item
-                    break
-
-            if item_to_unstash:
-                if len(player_inventory) < current_max_inventory_slots:
-                    stash.remove(item_to_unstash)
-                    player_inventory.append(item_to_unstash)
-                    print(f"You unstashed the {item_to_unstash['name']}.")
-                else:
-                    print("Your inventory is full.")
-            else:
-                print("You don't have that item in your stash.")
-
         elif verb == "enter" and "hideout" in parts:
             if has_hideout_key:
-                stash = handle_hideout(stash)
+                stash, player_inventory = handle_hideout(stash, player_inventory, current_max_inventory_slots)
             else:
                 print("You don't have a key to a hideout.")
 
@@ -1649,7 +1643,7 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
             return player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key
 
         else:
-            print("Invalid inn command. Type 'rest', 'talk', 'stash', 'unstash', or 'leave'.")
+            print("Invalid inn command. Type 'rest', 'talk', or 'leave'.")
 
     sound_manager.stop_music()
     sound_manager.play_music('ambient_music')

@@ -42,7 +42,7 @@ fi
 rm test_output_*.txt
 
 # Test Case 5: Buy Hideout Key and enter hideout
-echo -e "1\nTestHider\n1\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nohinn\ntalk Key Vendor\nbuy\n1\nexit\nenter hideout\nleave\nleave\nquit\n7\n" | python3 infinitedungeon.py > test_output_5.txt
+echo -e "1\nTestHider\n1\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nohinn\ntalk Key Vendor\nbuy\n1\nexit\nenter hideout\nleave\nleave\nquit\n7\n" | python3 infinitedungeon.py > test_output_5.txt
 
 if grep -q "You have chosen the path of the Reaver" test_output_5.txt && grep -q "You bought a Hideout Key" test_output_5.txt && grep -q "A quiet, personal space." test_output_5.txt; then
     echo "Test Case 5 Passed: Hideout functionality verified."
