@@ -2338,7 +2338,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     current_defense_bonus = 0
     current_crit_chance_bonus = 0.0
     # Helper function to process puzzle rewards
-    def process_puzzle_rewards(puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier):
+    def process_puzzle_rewards(puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points):
         rewards_data = puzzle.get('rewards', {})
         reward_given = False
 
@@ -2350,8 +2350,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             player_xp += xp_reward
             player_gold += gold_reward
             print(f"You gained {xp_reward} XP and {gold_reward} gold!")
-            player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
-                check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
+            player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points =                 check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
 
         # Handle Item Rewards
         if 'items' in rewards_data:
@@ -2411,7 +2410,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             else:
                 print(f"The path to the {direction_to_open} was already open.")
 
-        return player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+        return player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
 
     display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
@@ -3605,8 +3604,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room.puzzle['solved'] = True
                 
                 # NEW: Call the new reward handler function
-                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
-                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
                 )
 
                 display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
@@ -3684,8 +3683,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room.puzzle['solved'] = True
 
                 # NEW: Call the new reward handler function
-                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
-                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
                 )
 
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
@@ -3815,8 +3814,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 current_room.puzzle['solved'] = True
 
                 # NEW: Call the new reward handler function
-                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier = process_puzzle_rewards(
-                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
                 )
 
                 display_room_content_summary(current_room, rooms_travelled, direction_history)
