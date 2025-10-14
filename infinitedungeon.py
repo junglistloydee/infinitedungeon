@@ -694,7 +694,7 @@ def handle_equip_item(item_to_equip, player_shield_value, equipped_armor_value, 
 
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
-def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills):
+def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points):
     player_status_effects = []
     monster_status_effects = []
     """
@@ -816,6 +816,64 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             if monster_current_hp <= 0:
                 print(f"The {monster_name} collapses, defeated!")
                 gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
+                if equipped_helmet and equipped_helmet.get('cursed') and equipped_helmet.get('curse_effect', {}).get('gold_find'):
+                    gold_gained = int(gold_gained * equipped_helmet['curse_effect']['gold_find'])
+                    print(f"Your {equipped_helmet['name']} doubles the gold dropped!")
+                print(f"You gained {gold_gained} gold from defeating the {monster_name}!")
+
+                player_xp += monster_xp_reward
+                print(f"You gained {monster_xp_reward} experience points!")
+
+                item_drop_name = monster_data.get('item_drop')
+                if item_drop_name:
+                    item_def = get_item_by_name(item_drop_name)
+                    if item_def:
+                        if len(player_inventory) < current_max_inventory_slots:
+                            scaled_item = scale_item_for_player_level(item_def, player_level)
+                            player_inventory.append(scaled_item)
+                            print(f"The monster dropped {add_article(scaled_item['name'])}! It has been added to your inventory.")
+                            # NEW: Quick equip prompt
+                            if scaled_item.get('type') in ['weapon', 'shield', 'armor', 'equipment']:
+                                quick_equip_choice = input(f"Do you want to quick equip the {scaled_item['name']}? (yes/no): ").lower().strip()
+                                if quick_equip_choice in ['yes', 'y']:
+                                    player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet = \
+                                        handle_equip_item(player_inventory[-1], player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level, equipped_helmet)
+                                    player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
+                                    print(f"Your attack power is now {player_attack_power}.")
+                        elif current_room.item is None:
+                            scaled_item = scale_item_for_player_level(item_def, player_level)
+                            current_room.item = scaled_item
+                            print(f"The monster dropped {add_article(scaled_item['name'])}, but your inventory is full! It has been placed on the floor.")
+                        else:
+                            print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full and there's already an item on the floor! The dropped item is lost.")
+                    else:
+                        if DEBUG:
+                            debug.debug_print(f"Monster drop item '{item_drop_name}' not found in game data.")
+
+                if random.random() < 0.1:
+                    crafting_materials = [item for item in ALL_ITEMS if item.get('type') == 'crafting_material']
+                    if crafting_materials:
+                        material_to_drop = random.choice(crafting_materials)
+                        if len(player_inventory) < current_max_inventory_slots:
+                            player_inventory.append(copy.deepcopy(material_to_drop))
+                            print(f"The monster dropped a {material_to_drop['name']}!")
+                        else:
+                            print(f"The monster dropped a {material_to_drop['name']}, but your inventory is full!")
+
+                for q_id, q_data in player_quests.items():
+                    quest_def = get_quest_by_id(q_id)
+                    if quest_def and q_data['status'] == 'active':
+                        if (quest_def['type'] == 'defeat_any_monster') or \
+                           (quest_def['type'] == 'defeat_monster' and quest_def['target_monster'].lower() == monster_name.lower()):
+                            if q_data['current_count'] < quest_def['target_count']:
+                                q_data['current_count'] += 1
+                                print(f"Quest Update: Defeated a monster! ({q_data['current_count']}/{quest_def['target_count']}) for '{quest_def['name']}'")
+                                if q_data['current_count'] >= quest_def['target_count']:
+                                    print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
+
+                player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+                    check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
+
                 monster_data = None
                 break
         elif verb == "skill":
@@ -1209,7 +1267,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     sound_manager.stop_music()
     sound_manager.play_music('ambient_music')
     # MODIFIED: Added equipped_cloak, equipped_misc_items, and player_attack_bonus to returned values
-    return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items
+    return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points
 
 def handle_gambler(player_gold, gambler_data):
     """
@@ -1301,13 +1359,13 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
         print(f"\n--- Horde Battle ({i+1}/{horde_size}) ---")
 
         player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills)
+                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
 
         if player_hp <= 0:
-            return 'lose', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde
+            return 'lose', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde, player_skill_points
 
         if monster_data is None:
             monsters_defeated_in_horde += 1
@@ -2474,10 +2532,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
     if current_room.monster and not current_room.monster.get('is_boss_guardian', False): # For regular monsters
         monster_was_defeated = current_room.monster is not None
         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
         player_gold += gold_gained
         if player_hp <= 0:
             print("\n" + "=" * 40)
@@ -2914,10 +2972,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 # Handle regular monsters that just spawned (not winning item guardians)
                 elif current_room.monster and not current_room.monster.get('is_boss_guardian', False):
                     player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                    player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                    player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
                         handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                       current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
                     player_gold += gold_gained
                     if player_hp <= 0:
                         print("\n" + "=" * 40)
@@ -3000,10 +3058,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         print(f"A fierce {current_room.monster['name']} manifests, enraged by your theft!")
                         # Immediately initiate combat with the boss
                         player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
                             handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                           current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills)
+                                      player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
                         player_gold += gold_gained
                         if player_hp <= 0:
                             print("\n" + "=" * 40)
@@ -3302,10 +3360,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
             if current_room.monster:
                 player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
                     handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                   current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills)
+                                  player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
                 player_gold += gold_gained
                 if player_hp <= 0:
                     print("\n" + "=" * 40)
@@ -3648,10 +3706,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             print(fail_penalty['message'])
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -3727,10 +3785,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             print(fail_penalty['message'])
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                               current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
@@ -3963,10 +4021,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             current_room.monster = dict(monster_def)
                             # Initiate combat immediately
                             player_hp, max_hp, current_room.monster, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items = \
+                            player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
                                 handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
                                             current_room.monster, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills)
+                                              player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
                             player_gold += gold_gained
                             if player_hp <= 0:
                                 print("\n" + "=" * 40)
