@@ -590,6 +590,10 @@ def scale_item_for_player_level(item, player_level):
         if 'defense' in scaled_item:
             scaled_item['defense'] += bonus
 
+        if 'shop_price' in scaled_item:
+            price_increase = 1.0 + (bonus * 0.33)
+            scaled_item['shop_price'] = int(scaled_item['shop_price'] * price_increase)
+
         return scaled_item
 
     return item
