@@ -2894,7 +2894,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print(current_room.hazard['effect_message'].format(damage=current_room.hazard['damage']))
                 print(f"Your health is now {player_hp}/{max_hp} HP.")
                 if player_hp <= 0:
-                    return 'lose'
+                    return 'lose', monsters_defeated_this_run, rooms_travelled
                 continue
 
             if current_room.monster:
@@ -2986,7 +2986,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         print("=" * 40)
                         if DEBUG: # Wrapped debug calls
                             debug.close_debug_log() # Close log on game over
-                        return 'lose' # Game over, return 'lose'
+                        return 'lose', monsters_defeated_this_run, rooms_travelled
 
                 # If winning item just spawned, set flag for pickup
                 if current_room.item and current_room.item['name'] in WINNING_ITEMS and current_room.winning_item_just_spawned:
@@ -3282,7 +3282,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     print("=" * 40)
                     if DEBUG: # Wrapped debug calls
                         debug.close_debug_log() # Close log on game over
-                    return 'lose' # Game over, return 'lose'
+                    return 'lose', monsters_defeated_this_run, rooms_travelled
 
                 if player_hp != original_player_hp:
                     print(f"Your health is now {player_hp}/{max_hp} HP.")
@@ -3725,7 +3725,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             print("=" * 50)
                             if DEBUG: # Wrapped debug calls
                                 debug.close_debug_log() # Close log on game over
-                            return 'lose' # Game over, return 'lose'
+                            return 'lose', monsters_defeated_this_run, rooms_travelled
                     elif fail_penalty['type'] == 'monster_spawn':
                         # Make sure to strip and lower the monster name from JSON for with lookup
                         monster_name_from_penalty = fail_penalty['monster_name'].lower().strip()
@@ -3834,7 +3834,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             print("=" * 50)
                             if DEBUG: # Wrapped debug calls
                                 debug.close_debug_log() # Close log on game over
-                            return 'lose' # Game over, return 'lose'
+                            return 'lose', monsters_defeated_this_run, rooms_travelled
                     elif fail_penalty['type'] == 'monster_spawn':
                         # Make sure to strip and lower the monster name from JSON for robust lookup
                         monster_name_from_penalty = fail_penalty['monster_name'].lower().strip()
@@ -4072,7 +4072,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                             print("        G A M E    O V E R            ")
                             print("=" * 40)
                             if DEBUG: debug.close_debug_log()
-                            return 'lose'
+                            return 'lose', monsters_defeated_this_run, rooms_travelled
                     elif effect_type == 'spawn_monster':
                         monster_def = next((m for m in MONSTERS if m['name'] == details['monster_name']), None)
                         if monster_def:
