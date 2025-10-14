@@ -518,6 +518,8 @@ def display_room_content_summary(current_room, rooms_travelled, direction_histor
             print("    Hint: Answering the riddle might reveal the way. Try 'answer [your guess]'")
         elif puzzle_type == 'mechanism':
             print("    Hint: You might need to 'pull' a lever here. Try 'pull [lever color/material]'")
+        elif puzzle_type == 'pressure_plate':
+            print("    Hint: A pressure plate on the floor looks like it needs something pressed on it. Try 'press'")
         elif puzzle_type == 'item_delivery':
             print("    Hint: Look for a way to 'give' something to the object. Try 'give [item] to [object]'")
 
@@ -2630,6 +2632,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    quests                        - View your active quests.")
             print("    answer [your guess]           - Answer a riddle in a puzzle room.")
             print("    pull [lever name/color]       - Interact with a lever in a puzzle room.")
+            print("    press                         - Press a pressure plate.")
             print("    give [item] to [target]       - Give an item to a statue/NPC in a puzzle room.")
             print("    unlock [direction] with [key name] - Unlock a locked exit.")
             print("    look                          - See the room description again.")
@@ -3728,6 +3731,36 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 else:
                     print("Nothing seems to happen.")
 
+        elif verb == "press":
+            if current_room.monster:
+                print(f"You can't focus on puzzles while the {current_room.monster['name']} is still here!")
+                continue
+            if not current_room.puzzle or current_room.puzzle.get('solved', True) or current_room.puzzle['type'] != 'pressure_plate':
+                print("There's nothing here to press.")
+                continue
+
+            solution_items = current_room.puzzle.get('solution_items', [])
+            item_in_inventory = None
+            for item in player_inventory:
+                if item.get('type') in solution_items:
+                    item_in_inventory = item
+                    break
+
+            if item_in_inventory:
+                print(f"You press the {item_in_inventory['name']} onto the pressure plate. With a grinding sound, something happens!")
+                current_room.puzzle['solved'] = True
+
+                # Call the reward handler function
+                player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = process_puzzle_rewards(
+                    current_room.puzzle, player_inventory, current_max_inventory_slots, player_keychain, player_xp, player_gold, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
+                )
+
+                display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
+            else:
+                print(f"You try to press the plate, but nothing happens. The inscription reads: 'Only a warrior's blade may pass.'")
+                fail_penalty = current_room.puzzle.get('fail_penalty')
+                if fail_penalty and fail_penalty['type'] == 'flavor':
+                    print(fail_penalty['message'])
         elif verb == "pull":
             if current_room.monster:
                 print(f"You can't mess with levers while the {current_room.monster['name']} is still here!")
