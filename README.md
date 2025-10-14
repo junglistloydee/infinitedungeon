@@ -18,7 +18,7 @@ When you encounter a monster, combat is turn-based. You can attack, use items, o
 Gaining enough XP will increase your Level, raising your Max HP, Attack Power, and Critical Hit Chance, and fully restoring your health. You will also gain skill points to unlock new abilities.
 
 ### 🧩 Puzzles and Traps
-Some rooms contain puzzles like riddles or mechanisms. Solving them can yield valuable rewards or open new paths. Beware of hidden traps that can damage you or poison you.
+Some rooms contain puzzles like riddles, mechanisms with levers, or pressure plates. Solving them can yield valuable rewards or open new paths. Beware of hidden traps that can damage you or poison you. Use the `search` command to find them and `disarm` to neutralize them. Items like the "Trap Disarming Kit" can boost your success.
 
 ### 📜 Quests
 You'll find Quest Givers in special Inn rooms or wandering the dungeon. Completing their tasks provides significant rewards in Gold, XP, and unique items.
@@ -35,14 +35,25 @@ You can save your progress at any time and load it from the main menu.
 ### 🔨 Crafting and Enchanting
 At crafting stations (Altars and Anvils), you can craft new items from materials you find in the dungeon. You can also enchant your weapons and armor to give them powerful magical effects.
 
-### 🏠 The Inn
-You may stumble upon a mystical inn, a safe haven where you can rest to restore your health, stash items for later, and talk to quest givers.
+### 🏠 The Inn & Hideout
+You may stumble upon a mystical inn, a safe haven where you can rest to restore your health, stash items for later, and talk to quest givers. After purchasing a special key, you can unlock your own personal hideout, a persistent room accessible from the inn that provides infinite item storage.
 
 ### ✨ Meta-Progression
 At the end of a run, you'll be awarded Soul Shards based on your performance. You can use these shards in the Adventurer's Guild to purchase permanent upgrades that will help you on your next adventures.
 
 ### 🎵 Sound and Music
 The game features a dynamic music system with different tracks for ambient exploration, combat, inns, and vendors.
+
+## Game Modes
+
+### Normal Run
+The standard game mode, where you explore a randomly generated dungeon.
+
+### Seeded Run
+You can start a new game with a specific seed to play the same dungeon layout every time. This is great for practicing or competing with friends. The current seed is always displayed in the game.
+
+### Daily Challenge
+Test your skills in a special dungeon that is the same for all players each day. A leaderboard tracks the best scores.
 
 ## Key Commands
 
