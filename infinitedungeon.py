@@ -1140,6 +1140,7 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
             print("    use [item]            - Use any consumable from your inventory (e.g., 'use healing potion').")
             print("    inventory             - View your current inventory (does not cost a turn).")
             # NEW: Add 'equipped' to combat help
+            print("    skill                 - Use a class skill.")
             print("    equipped              - View your currently equipped items (does not cost a turn).")
             print("    help                  - Show this list of combat commands.")
             print("-" * 50)
@@ -2563,6 +2564,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("    misc                          - View your currently equipped miscellaneous items.")
             print("    attack                        - Attack a monster in the room.")
             print("    skill                         - Open the skill tree to view and unlock skills.")
+            print("    craft                         - Craft items at a crafting station.")
+            print("    enchant                       - Enchant items at a crafting station.")
             print("    combine                       - Combine items (e.g., 'combine healing potion').")
             print("    talk [person]                 - Attempt to talk to an NPC. In an inn, lists people to talk to.")
             print("    rest                          - Rest at an inn to restore health.")
