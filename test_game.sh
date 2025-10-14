@@ -49,3 +49,12 @@ if grep -q "You have chosen the path of the Reaver" test_output_5.txt && grep -q
 else
     echo "Test Case 5 Failed: Hideout functionality not verified."
 fi
+
+# Test Case 6: Pressure plate puzzle
+echo -e "1\nTestPress\n1\ndrop battle-worn axe\npress\nget battle-worn axe\nequip battle-worn axe\npress\nnorth\nquit\n7\n" | python3 infinitedungeon.py > test_output_6.txt
+
+if grep -q "You try to press the plate, but nothing happens." test_output_6.txt && grep -q "You press the battle-worn axe onto the pressure plate." test_output_6.txt && grep -q "A new path to the north has opened!" test_output_6.txt; then
+    echo "Test Case 6 Passed: Pressure plate puzzle solved successfully."
+else
+    echo "Test Case 6 Failed: Pressure plate puzzle not solved."
+fi
