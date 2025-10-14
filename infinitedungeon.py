@@ -1592,7 +1592,7 @@ def handle_hideout(stash, player_inventory, current_max_inventory_slots):
     print("A quiet, personal space. You can stash items here.")
 
     while True:
-        print("\nHideout commands: stash / unstash / leave")
+        print("\nHideout commands: stash / unstash / view / leave")
         hideout_command_input = input("Hideout Action> ").lower().strip()
         parts = hideout_command_input.split()
 
@@ -1632,6 +1632,31 @@ def handle_hideout(stash, player_inventory, current_max_inventory_slots):
                     print("Your inventory is full.")
             else:
                 print("You don't have that item in your stash.")
+        elif verb == "view":
+            if not stash:
+                print("Your stash is empty.")
+            else:
+                print("\n--- Your Stash ---")
+                for item_dict in stash:
+                    display_str = f"    - {add_article(item_dict['name'])}"
+                    item_type = item_dict.get('type')
+                    if item_type == 'consumable':
+                        effect_type = item_dict.get('effect_type')
+                        effect_value = item_dict.get('effect_value')
+                        if effect_type == 'heal' and isinstance(effect_value, int):
+                            display_str += f" (Heals {effect_value} HP)"
+                    elif item_type == 'weapon':
+                        display_str += f" (Damage: {item_dict.get('damage', '?')})"
+                    elif item_type == 'armor':
+                        display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                    elif item_type == 'backpack':
+                        display_str += f" (+{item_dict.get('effect_value', '?')} Slots)"
+                    elif item_type == 'shield':
+                        display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                    elif item_dict.get('description'):
+                        display_str += f" ({item_dict['description']})"
+                    print(display_str)
+                print("--------------------")
         elif verb == "leave":
             print("You leave your hideout.")
             return stash, player_inventory
