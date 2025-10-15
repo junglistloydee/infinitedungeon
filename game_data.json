@@ -4362,34 +4362,75 @@
       ],
       "skill_tree": [
         {
+          "id": 1,
           "name": "Power Strike",
           "description": "A powerful attack that deals 50% extra damage.",
-          "level_unlocked": 2,
+          "level_unlocked": 3,
+          "dependencies": [],
           "effect": {
             "type": "damage_boost",
             "value": 1.5
           }
         },
         {
+          "id": 2,
           "name": "War Cry",
-          "description": "A terrifying shout that has a 30% chance to stun all enemies in the room for 1 turn.",
-          "level_unlocked": 4,
+          "description": "A terrifying shout that has a 30% chance to stun enemies for 1 turn.",
+          "level_unlocked": 6,
+          "dependencies": [1],
           "effect": {
             "type": "stun",
             "chance": 0.3
           }
         },
         {
+          "id": 3,
           "name": "Berserker's Rage",
           "description": "Increases your attack power by 10 for 5 turns.",
-          "level_unlocked": 6,
+          "level_unlocked": 9,
+          "dependencies": [2],
           "effect": {
             "type": "stat_buff",
             "stat": "attack_power",
             "value": 10,
             "duration": 5
           }
+        },
+        {
+          "id": 4,
+          "name": "Sunder Armor",
+          "description": "A powerful strike that permanently reduces enemy defense by 5 for the duration of combat.",
+          "level_unlocked": 12,
+          "dependencies": [3],
+          "effect": {
+            "type": "debuff",
+            "stat": "defense",
+            "value": -5
+          }
+        },
+        {
+          "id": 5,
+          "name": "Execute",
+          "description": "A devastating attack that deals massive damage to enemies below 25% health.",
+          "level_unlocked": 15,
+          "dependencies": [4],
+          "effect": {
+            "type": "execute",
+            "health_threshold": 0.25,
+            "damage_multiplier": 3.0
+          }
         }
+      ],
+      "ascii_tree": [
+        "      (1)      ",
+        "       |       ",
+        "      (2)      ",
+        "       |       ",
+        "      (3)      ",
+        "       |       ",
+        "      (4)      ",
+        "       |       ",
+        "      (5)      "
       ]
     },
     "Whisper": {
@@ -4407,17 +4448,21 @@
       ],
       "skill_tree": [
         {
+          "id": 1,
           "name": "Shadow Strike",
           "description": "A guaranteed critical hit.",
-          "level_unlocked": 2,
+          "level_unlocked": 3,
+          "dependencies": [],
           "effect": {
             "type": "guaranteed_crit"
           }
         },
         {
+          "id": 2,
           "name": "Venomous Blades",
           "description": "Poisons the enemy, dealing 10 damage per turn for 3 turns.",
-          "level_unlocked": 4,
+          "level_unlocked": 6,
+          "dependencies": [1],
           "effect": {
             "type": "poison",
             "damage": 10,
@@ -4425,15 +4470,49 @@
           }
         },
         {
+          "id": 3,
           "name": "Evasion",
           "description": "Increases your chance to dodge attacks by 50% for 3 turns.",
-          "level_unlocked": 6,
+          "level_unlocked": 9,
+          "dependencies": [2],
           "effect": {
             "type": "dodge_buff",
             "value": 0.5,
             "duration": 3
           }
+        },
+        {
+          "id": 4,
+          "name": "Smoke Bomb",
+          "description": "Create a cloud of smoke, guaranteeing escape from a non-boss battle.",
+          "level_unlocked": 12,
+          "dependencies": [3],
+          "effect": {
+            "type": "escape"
+          }
+        },
+        {
+          "id": 5,
+          "name": "Assassinate",
+          "description": "A precise strike that has a 15% chance to instantly kill a non-boss enemy.",
+          "level_unlocked": 15,
+          "dependencies": [4],
+          "effect": {
+            "type": "instant_kill",
+            "chance": 0.15
+          }
         }
+      ],
+      "ascii_tree": [
+        "      (1)      ",
+        "       |       ",
+        "      (2)      ",
+        "       |       ",
+        "      (3)      ",
+        "       |       ",
+        "      (4)      ",
+        "       |       ",
+        "      (5)      "
       ]
     },
     "Prodigy": {
@@ -4451,32 +4530,71 @@
       ],
       "skill_tree": [
         {
+          "id": 1,
           "name": "Fireball",
           "description": "Launches a fiery projectile that deals 30 area-of-effect damage to all enemies.",
-          "level_unlocked": 2,
+          "level_unlocked": 3,
+          "dependencies": [],
           "effect": {
             "type": "aoe_damage",
             "damage": 30
           }
         },
         {
+          "id": 2,
           "name": "Ice Shard",
           "description": "A shard of ice that has a 50% chance to freeze an enemy for 1 turn.",
-          "level_unlocked": 4,
+          "level_unlocked": 6,
+          "dependencies": [1],
           "effect": {
             "type": "freeze",
             "chance": 0.5
           }
         },
         {
+          "id": 3,
           "name": "Arcane Shield",
           "description": "Creates a magical barrier that absorbs 50 damage.",
-          "level_unlocked": 6,
+          "level_unlocked": 9,
+          "dependencies": [2],
           "effect": {
             "type": "shield",
             "value": 50
           }
+        },
+        {
+          "id": 4,
+          "name": "Lightning Bolt",
+          "description": "A bolt of lightning that strikes a single target for 75 damage.",
+          "level_unlocked": 12,
+          "dependencies": [3],
+          "effect": {
+            "type": "single_target_damage",
+            "damage": 75
+          }
+        },
+        {
+          "id": 5,
+          "name": "Meteor Swarm",
+          "description": "Calls down a shower of meteors, dealing 100 area-of-effect damage to all enemies.",
+          "level_unlocked": 15,
+          "dependencies": [4],
+          "effect": {
+            "type": "aoe_damage",
+            "damage": 100
+          }
         }
+      ],
+      "ascii_tree": [
+        "      (1)      ",
+        "       |       ",
+        "      (2)      ",
+        "       |       ",
+        "      (3)      ",
+        "       |       ",
+        "      (4)      ",
+        "       |       ",
+        "      (5)      "
       ]
     },
     "Oracle": {
@@ -4494,18 +4612,22 @@
       ],
       "skill_tree": [
         {
+          "id": 1,
           "name": "Holy Light",
           "description": "Heals you for 50 HP.",
-          "level_unlocked": 2,
+          "level_unlocked": 3,
+          "dependencies": [],
           "effect": {
             "type": "heal",
             "value": 50
           }
         },
         {
+          "id": 2,
           "name": "Smite",
           "description": "A divine strike that deals double damage to undead enemies.",
-          "level_unlocked": 4,
+          "level_unlocked": 6,
+          "dependencies": [1],
           "effect": {
             "type": "damage_modifier",
             "multiplier": 2,
@@ -4513,16 +4635,52 @@
           }
         },
         {
+          "id": 3,
           "name": "Blessing of Protection",
           "description": "Increases your defense by 10 for 5 turns.",
-          "level_unlocked": 6,
+          "level_unlocked": 9,
+          "dependencies": [2],
           "effect": {
             "type": "stat_buff",
             "stat": "defense",
             "value": 10,
             "duration": 5
           }
+        },
+        {
+          "id": 4,
+          "name": "Purge",
+          "description": "Removes all negative status effects from the player.",
+          "level_unlocked": 12,
+          "dependencies": [3],
+          "effect": {
+            "type": "dispel"
+          }
+        },
+        {
+          "id": 5,
+          "name": "Divine Intervention",
+          "description": "Fully heals the player and grants a 20-point defense boost for 5 turns.",
+          "level_unlocked": 15,
+          "dependencies": [4],
+          "effect": {
+            "type": "buff_heal",
+            "stat": "defense",
+            "value": 20,
+            "duration": 5
+          }
         }
+      ],
+      "ascii_tree": [
+        "      (1)      ",
+        "       |       ",
+        "      (2)      ",
+        "       |       ",
+        "      (3)      ",
+        "       |       ",
+        "      (4)      ",
+        "       |       ",
+        "      (5)      "
       ]
     }
   },

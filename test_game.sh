@@ -51,7 +51,7 @@ else
 fi
 
 # Test Case 6: Pressure plate puzzle
-echo -e "1\nTestPress\n1\ndrop battle-worn axe\npress\nget battle-worn axe\nequip battle-worn axe\npress\nnorth\nquit\n7\n" | python3 infinitedungeon.py > test_output_6.txt
+echo -e "4\n42\nTestPress\n1\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\nattack\ndrop battle-worn axe\npress\nget battle-worn axe\nequip battle-worn axe\npress\nnorth\nquit\n7\n" | python3 infinitedungeon.py > test_output_6.txt
 
 if grep -q "You try to press the plate, but nothing happens." test_output_6.txt && grep -q "You press the battle-worn axe onto the pressure plate." test_output_6.txt && grep -q "A new path to the north has opened!" test_output_6.txt; then
     echo "Test Case 6 Passed: Pressure plate puzzle solved successfully."
