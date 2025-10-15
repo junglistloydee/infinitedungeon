@@ -2483,6 +2483,113 @@ class Room:
         else:
             print("There are no exits from this room. You are trapped!")
 
+def display_map(room_history, direction_history, current_room):
+    """Generates and displays an ASCII map of the visited rooms."""
+    # A mapping of room features to characters for the map
+    map_legend = {
+        'inn': 'I',
+        'vendor': 'V',
+        'puzzle': '?',
+        'shrine': '!',
+        'horde': 'H',
+        'crafting': 'C',
+        'boss': 'B',
+        'start': 'S',
+        'default': '·'
+    }
+
+    # Determine coordinates of all visited rooms
+    coords = {}
+    x, y = 0, 0
+    # The full room history for map display should include the current room
+    full_room_history = room_history + [current_room]
+    coords[(x, y)] = full_room_history[0]
+
+    path = [(x, y)]
+    for i, direction in enumerate(direction_history):
+        if direction == 'north':
+            y -= 1
+        elif direction == 'south':
+            y += 1
+        elif direction == 'east':
+            x += 1
+        elif direction == 'west':
+            x -= 1
+        if (i + 1) < len(full_room_history):
+            coords[(x, y)] = full_room_history[i+1]
+            path.append((x, y))
+
+    player_x, player_y = x, y
+
+    if not path:
+        min_x, max_x, min_y, max_y = 0, 0, 0, 0
+    else:
+        min_x = min(p[0] for p in path)
+        max_x = max(p[0] for p in path)
+        min_y = min(p[1] for p in path)
+        max_y = max(p[1] for p in path)
+
+    width = (max_x - min_x + 1) * 2
+    height = (max_y - min_y + 1) * 2
+    grid = [[' ' for _ in range(width)] for _ in range(height)]
+
+    # Draw connections and rooms
+    for i in range(len(path)):
+        room_x, room_y = path[i]
+        grid_y = (room_y - min_y) * 2
+        grid_x = (room_x - min_x) * 2
+
+        room_obj = coords.get((room_x, room_y))
+        icon = map_legend['default']
+        if room_obj:
+            if getattr(room_obj, 'is_inn', False):
+                icon = map_legend['inn']
+            elif room_obj.npc and room_obj.npc.get('type') == 'vendor':
+                icon = map_legend['vendor']
+            elif room_obj.puzzle and not room_obj.puzzle.get('solved', True):
+                icon = map_legend['puzzle']
+            elif room_obj.shrine:
+                icon = map_legend['shrine']
+            elif room_obj.horde_data:
+                icon = map_legend['horde']
+            elif hasattr(room_obj, 'crafting_station'):
+                icon = map_legend['crafting']
+            elif room_obj.monster and room_obj.monster.get('is_boss_guardian', False):
+                icon = map_legend['boss']
+
+        if i == 0:
+            icon = map_legend['start']
+
+        grid[grid_y][grid_x] = icon
+
+        if i < len(path) - 1:
+            next_room_x, next_room_y = path[i+1]
+            if next_room_x > room_x:
+                grid[grid_y][grid_x + 1] = '-'
+            elif next_room_x < room_x:
+                grid[grid_y][grid_x - 1] = '-'
+            elif next_room_y > room_y:
+                grid[grid_y + 1][grid_x] = '|'
+            elif next_room_y < room_y:
+                grid[grid_y - 1][grid_x] = '|'
+
+    grid_player_y = (player_y - min_y) * 2
+    grid_player_x = (player_x - min_x) * 2
+    grid[grid_player_y][grid_player_x] = '@'
+
+    print("\n--- Dungeon Map ---")
+    for row in grid:
+        print("".join(row))
+    print("-------------------")
+    print("--- Legend ---")
+    print("@: You      S: Start")
+    print("I: Inn      V: Vendor")
+    print("?: Puzzle   !: Shrine")
+    print("H: Horde    C: Crafting")
+    print("B: Boss     ·: Explored")
+    print("--------------\n")
+
+
 # --- Game Loop Function ---
 # MODIFIED: Added equipped_cloak to parameters
 def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inventory_slots, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_reputation, player_name, rooms_travelled, player_keychain, equipped_misc_items, player_effects, room_history,direction_history, sound_manager, equipped_helmet, player_class, player_skill_points, player_unlocked_skills, monsters_defeated_this_run, stash, has_hideout_key, seed=None):
@@ -2705,6 +2812,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             print("\nAvailable commands:")
             print("    go [north, south, east, west] - Move to a new room.")
             print("    [north, south, east, west]    - Move directly (e.g., 'north').") # NEW: Updated help text
+            print("    map                           - Display the dungeon map.")
             print("    get [item name OR 'item']     - Pick up an item (e.g., 'get rusty key' or 'get item').")
             print("    drop [item name]              - Drop an item from your inventory or keychain.")
             print("    use [item name]               - Use any consumable from your inventory (e.g., 'use healing potion').")
@@ -4083,6 +4191,10 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                     print("This hazard cannot be disarmed.")
             else:
                 print("There is no visible trap to disarm.")
+
+        elif verb == "map":
+            display_map(room_history, direction_history, current_room)
+            continue
 
         elif verb == "credits":
             print(CREDITS_TEXT)
