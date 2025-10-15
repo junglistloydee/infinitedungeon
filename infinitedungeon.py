@@ -95,6 +95,10 @@ HORDES = GAME_DATA.get('hordes', [])
 if DEBUG: # Wrapped debug calls
     debug.debug_print(f"Loaded {len(HORDES)} hordes.")
 
+COMBINATION_RECIPES = GAME_DATA.get('combination_recipes', [])
+if DEBUG: # Wrapped debug calls
+    debug.debug_print(f"Loaded {len(COMBINATION_RECIPES)} combination recipes.")
+
 # Specific debug for item_spawn_weights to confirm it's loaded
 ITEM_SPAWN_WEIGHTS = GAME_DATA.get('item_spawn_weights', {})
 if DEBUG: # Wrapped debug calls
@@ -3522,82 +3526,51 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 print("There's nothing to attack here.")
 
         elif verb == "combine":
-            if len(parts) < 2:
-                print("Combine what? Usage: 'combine [item name]' (e.g., 'combine healing potion')")
-                continue
-
-            item_to_combine_name_input = " ".join(parts[1:])
-
             if current_room.monster:
                 print(f"You can't combine items while the {current_room.monster['name']} is still here!")
                 continue
 
-            if item_to_combine_name_input == "healing potion":
-                healing_potion_count = 0
-                healing_potions_in_inv = []
-                # Collect actual item objects for removal
-                for item_obj in player_inventory:
-                    if item_obj.get('name', '').lower() == "healing potion" and \
-                       item_obj.get('type') == 'consumable' and \
-                       item_obj.get('effect_type') == 'heal':
-                        healing_potion_count += 1
-                        healing_potions_in_inv.append(item_obj)
+            if len(parts) == 1:
+                print("Available combinations:")
+                for recipe in COMBINATION_RECIPES:
+                    ingredients = ", ".join([f"{ingredient['quantity']}x {ingredient['name']}" for ingredient in recipe['ingredients']])
+                    print(f"  - {recipe['result']} (requires: {ingredients})")
+                print("Usage: combine [item name]")
+                continue
 
-                if healing_potion_count >= 2:
-                    large_healing_potion_def = get_item_by_name('large healing potion')
+            item_to_combine_name_input = " ".join(parts[1:])
 
-                    if large_healing_potion_def:
-                        # Check inventory space AFTER removing 2 and adding 1 (net change -1)
-                        if len(player_inventory) - 2 + 1 > current_max_inventory_slots:
-                                     print("Your inventory is too full to combine items! You need at least one free slot after combining.")
-                        else:
-                            # Remove the first two healing potion objects found
-                            player_inventory.remove(healing_potions_in_inv[0])
-                            player_inventory.remove(healing_potions_in_inv[1])
+            recipe_found = None
+            for recipe in COMBINATION_RECIPES:
+                if recipe['result'].lower() == item_to_combine_name_input.lower():
+                    recipe_found = recipe
+                    break
 
-                            player_inventory.append(copy.deepcopy(large_healing_potion_def))
-                            print(f"You carefully combine two healing potions to create {add_article(large_healing_potion_def['name'])}!")
-                            print(f"Your inventory now has {len(player_inventory)}/{current_max_inventory_slots} items.")
-                    else:
-                        print("Could not find 'large healing potion' definition in game data. Combination failed.")
-                else:
-                    print("You need at least two 'healing potions' to combine them into a large one.")
-
-            # NEW LOGIC FOR SUPER HEALING POTION
-            elif item_to_combine_name_input == "large healing potion":
-                large_healing_potion_count = 0
-                large_healing_potions_in_inv = []
-                # Collect actual item objects for removal
-                for item_obj in player_inventory:
-                    if item_obj.get('name', '').lower() == "large healing potion" and \
-                       item_obj.get('type') == 'consumable' and \
-                       item_obj.get('effect_type') == 'heal':
-                        large_healing_potion_count += 1
-                        large_healing_potions_in_inv.append(item_obj)
-
-                if large_healing_potion_count >= 2:
-                    super_healing_potion_def = get_item_by_name('super healing potion')
-
-                    if super_healing_potion_def:
-                        # Check inventory space (same net change: -1 item)
-                        if len(player_inventory) - 2 + 1 > current_max_inventory_slots:
-                            print("Your inventory is too full to combine items! You need at least one free slot after combining.")
-                        else:
-                            # Remove the first two large healing potion objects found
-                            player_inventory.remove(large_healing_potions_in_inv[0])
-                            player_inventory.remove(large_healing_potions_in_inv[1])
-
-                            player_inventory.append(copy.deepcopy(super_healing_potion_def))
-                            print(f"With meticulous care, you combine two large healing potions to create {add_article(super_healing_potion_def['name'])}!")
-                            print(f"Your inventory now has {len(player_inventory)}/{current_max_inventory_slots} items.")
-                    else:
-                        print("Could not find 'super healing potion' definition in game data. Combination failed.")
-                else:
-                    print("You need at least two 'large healing potions' to combine them into a super one.")
-            # END NEW LOGIC
-
-            else: # This 'else' now catches all other non-recognized combine attempts
+            if not recipe_found:
                 print(f"You don't know how to combine {add_article(item_to_combine_name_input)}.")
+                continue
+
+            can_combine = True
+            for ingredient in recipe_found['ingredients']:
+                if not has_player_enough_items(player_inventory, ingredient['name'], ingredient['quantity']):
+                    can_combine = False
+                    print(f"You don't have enough {ingredient['name']}.")
+                    break
+
+            if can_combine:
+                # Check for inventory space
+                if len(player_inventory) - sum(ing['quantity'] for ing in recipe_found['ingredients']) + 1 > current_max_inventory_slots:
+                    print("Your inventory is too full to combine these items.")
+                else:
+                    for ingredient in recipe_found['ingredients']:
+                        remove_items_from_inventory(player_inventory, ingredient['name'], ingredient['quantity'])
+
+                    result_item = get_item_by_name(recipe_found['result'])
+                    if result_item:
+                        player_inventory.append(copy.deepcopy(result_item))
+                        print(f"You successfully combined the items to create {add_article(result_item['name'])}!")
+                    else:
+                        print(f"Combination failed: result item '{recipe_found['result']}' not found.")
 
         elif verb == "unlock":
             if len(parts) < 4 or parts[2] != "with":
