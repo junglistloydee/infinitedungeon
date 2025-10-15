@@ -1649,7 +1649,72 @@ def handle_shop(player_gold, player_inventory, current_max_inventory_slots, play
         else:
             print("Invalid shop command. Type 'buy', 'sell', or 'exit'.")
 
-def handle_hideout(stash, player_inventory, current_max_inventory_slots):
+def display_inventory_and_stats(player_hp, max_hp, player_level, player_xp, xp_to_next_level, player_inventory, current_max_inventory_slots, player_keychain, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, equipped_misc_items, player_effects):
+    if not player_inventory and not player_keychain:
+        print("Your inventory is empty.")
+    else:
+        print(f"Your Health: {player_hp}/{max_hp} HP.")
+        print(f"Your Level: {player_level} (XP: {player_xp}/{xp_to_next_level})")
+        print(f"You are carrying ({len(player_inventory)}/{current_max_inventory_slots}):")
+        if player_inventory:
+            for item_dict in player_inventory:
+                display_str = f"    - {add_article(item_dict['name'])}"
+                item_type = item_dict.get('type')
+                if item_type == 'consumable':
+                    effect_type = item_dict.get('effect_type')
+                    effect_value = item_dict.get('effect_value')
+                    if effect_type == 'heal' and isinstance(effect_value, int):
+                        display_str += f" (Heals {effect_value} HP)"
+                elif item_type == 'weapon':
+                    display_str += f" (Damage: {item_dict.get('damage', '?')})"
+                    if equipped_weapon and equipped_weapon['name'].lower() == item_dict['name'].lower():
+                        display_str += " (EQUIPPED)"
+                elif item_type == 'armor':
+                    item_subtype = item_dict.get('subtype')
+                    if item_subtype == 'body_armor':
+                        display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                        if equipped_armor_value and equipped_armor_value['name'].lower() == item_dict['name'].lower():
+                            display_str += " (EQUIPPED)"
+                    elif item_subtype == 'cloak':
+                        display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                        if equipped_cloak and equipped_cloak['name'].lower() == item_dict['name'].lower():
+                            display_str += " (EQUIPPED)"
+                elif item_type == 'backpack':
+                    display_str += f" (+{item_dict.get('effect_value', '?')} Slots)"
+                elif item_type == 'shield':
+                    display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                    if player_shield_value and player_shield_value['name'].lower() == item_dict['name'].lower():
+                        display_str += " (EQUIPPED)"
+                elif item_type == 'equipment':
+                    display_str += f" (Effect: {item_dict.get('effect_type', 'unknown')})"
+                    if item_dict in equipped_misc_items:
+                        display_str += " (EQUIPPED)"
+                print(display_str)
+        else:
+            print("    (Empty)")
+
+        print("Your Keychain:")
+        if player_keychain:
+            for item_dict in player_keychain:
+                print(f"    - {add_article(item_dict['name'])} (Type: {item_dict.get('key_type', '?')} key)")
+        else:
+            print("    (Empty)")
+
+        print(f"Your Gold: {player_gold}")
+        print(f"Total Defense: {calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet)}")
+        print(f"Attack Power: {player_attack_power} (+/-{player_attack_variance})")
+        print(f"Critical Chance: {player_crit_chance*100:.0f}% (x{player_crit_multiplier:.1f} Damage)")
+        if equipped_weapon:
+            print(f"Equipped Weapon: {equipped_weapon['name']} (Damage: {equipped_weapon.get('damage', '?')})")
+        else:
+            print("Equipped Weapon: Fists (Damage: 5)")
+        if player_effects:
+            print("\n--- Active Effects ---")
+            for effect in player_effects:
+                print(f"  - {effect['message'].split('!')[0]} ({effect['duration']} turns remaining)")
+            print("----------------------")
+
+def handle_hideout(stash, player_inventory, current_max_inventory_slots, player_hp, max_hp, player_level, player_xp, xp_to_next_level, player_keychain, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, equipped_misc_items, player_effects):
     """
     Manages the player's personal hideout.
     Returns the updated stash and player_inventory.
@@ -1658,7 +1723,7 @@ def handle_hideout(stash, player_inventory, current_max_inventory_slots):
     print("A quiet, personal space. You can stash items here.")
 
     while True:
-        print("\nHideout commands: stash / unstash / view / leave")
+        print("\nHideout commands: stash / unstash / view / inv / leave")
         hideout_command_input = input("Hideout Action> ").lower().strip()
         parts = hideout_command_input.split()
 
@@ -1667,7 +1732,9 @@ def handle_hideout(stash, player_inventory, current_max_inventory_slots):
 
         verb = parts[0]
 
-        if verb == "stash":
+        if verb.startswith("inv"):
+            display_inventory_and_stats(player_hp, max_hp, player_level, player_xp, xp_to_next_level, player_inventory, current_max_inventory_slots, player_keychain, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, equipped_misc_items, player_effects)
+        elif verb == "stash":
             item_to_stash_name = " ".join(parts[1:])
             item_to_stash = None
             for item in player_inventory:
@@ -1729,7 +1796,7 @@ def handle_hideout(stash, player_inventory, current_max_inventory_slots):
         else:
             print("Invalid hideout command.")
 
-def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation):
+def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation, equipped_misc_items, player_effects, equipped_helmet):
     """
     Manages the inn interaction, allowing the player to rest and talk to quest givers.
     Returns updated player state.
@@ -1742,9 +1809,9 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
     while True:
         print(f"\nYour HP: {player_hp}/{max_hp}")
         if has_hideout_key:
-            print("Inn commands: rest / talk / enter hideout / leave")
+            print("Inn commands: rest / talk / enter hideout / inv / leave")
         else:
-            print("Inn commands: rest / talk / leave")
+            print("Inn commands: rest / talk / inv / leave")
         inn_command_input = input("Inn Action> ").lower().strip()
         parts = inn_command_input.split()
 
@@ -1760,6 +1827,8 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
             else:
                 print("\nYou are already at full health and feeling great.")
 
+        elif verb.startswith("inv"): # New block for inventory
+            display_inventory_and_stats(player_hp, max_hp, player_level, player_xp, xp_to_next_level, player_inventory, current_max_inventory_slots, player_keychain, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, equipped_misc_items, player_effects)
         elif verb == "talk":
             quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver' or n.get('name') == 'Key Vendor']
             if not quest_givers:
@@ -1788,7 +1857,7 @@ def handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory,
 
         elif verb == "enter" and "hideout" in parts:
             if has_hideout_key:
-                stash, player_inventory = handle_hideout(stash, player_inventory, current_max_inventory_slots)
+                stash, player_inventory = handle_hideout(stash, player_inventory, current_max_inventory_slots, player_hp, max_hp, player_level, player_xp, xp_to_next_level, player_keychain, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, equipped_misc_items, player_effects)
             else:
                 print("You don't have a key to a hideout.")
 
@@ -2938,104 +3007,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
             # You might want to add debug.debug_player_data() here too for context
 
         elif verb.startswith("inv"): # Changed to use .startswith
-            # Use debug function for inventory data, but keep regular print for user-facing output
-            if DEBUG: # Wrapped debug calls
-                debug.debug_player_data(player_inventory, player_keychain, current_max_inventory_slots, player_gold, "Inventory Check")
-
-            if not player_inventory and not player_keychain: # Check keychain too
-                print("Your inventory is empty.")
-            else:
-                print(f"Your Health: {player_hp}/{max_hp} HP.")
-                print(f"Your Level: {player_level} (XP: {player_xp}/{xp_to_next_level})")
-
-                # Display regular inventory
-                print(f"You are carrying ({len(player_inventory)}/{current_max_inventory_slots}):")
-                if player_inventory:
-                    for item_dict in player_inventory:
-                        display_str = f"    - {add_article(item_dict['name'])}"
-                        item_type = item_dict.get('type')
-                        if item_type == 'consumable':
-                            effect_type = item_dict.get('effect_type')
-                            effect_value = item_dict.get('effect_value')
-                            if effect_type == 'heal' and isinstance(effect_value, int):
-                                display_str += f" (Heals {effect_value} HP)"
-                            elif effect_type == 'harm' and isinstance(effect_value, int):
-                                display_str += f" (Harms {effect_value} HP)"
-                            elif effect_type == 'wake_up':
-                                display_str += " (Stimulant)"
-                            elif effect_type == 'flavor':
-                                display_str += " (Consumable)"
-                            elif effect_type == 'cure':
-                                display_str += f" (Cures {item_dict.get('effect_value')})"
-                            elif effect_type == 'inflict':
-                                display_str += f" (Inflicts {item_dict.get('effect_value')})"
-                        elif item_type == 'weapon':
-                            display_str += f" (Damage: {item_dict.get('damage', '?')})"
-                            if equipped_weapon and equipped_weapon['name'].lower() == item_dict['name'].lower():
-                                display_str += " (EQUIPPED)"
-                        elif item_type == 'armor':
-                            # MODIFIED: Check if it's armor or cloak
-                            item_subtype = item_dict.get('subtype')
-                            if item_subtype == 'body_armor':
-                                display_str += f" (Defense: {item_dict.get('defense', '?')})"
-                                if equipped_armor_value and equipped_armor_value['name'].lower() == item_dict['name'].lower():
-                                    display_str += " (EQUIPPED)"
-                            elif item_subtype == 'cloak':
-                                display_str += f" (Defense: {item_dict.get('defense', '?')})"
-                                if equipped_cloak and equipped_cloak['name'].lower() == item_dict['name'].lower():
-                                    display_str += " (EQUIPPED)"
-                            else: # fallback for generic 'armor' type without subtype
-                                display_str += f" (Defense: {item_dict.get('defense', '?')})"
-                                if equipped_armor_value and equipped_armor_value['name'].lower() == item_dict['name'].lower():
-                                    display_str += " (EQUIPPED)"
-                        elif item_type == 'backpack':
-                            display_str += f" (+{item_dict.get('effect_value', '?')} Slots)"
-                        elif item_type == 'shield':
-                            display_str += f" (Defense: {item_dict.get('defense', '?')})"
-                            # FIXED: Compare by name for equipped status
-                            if player_shield_value and player_shield_value['name'].lower() == item_dict['name'].lower():
-                                display_str += " (EQUIPPED)"
-                        elif item_type == 'winning_item':
-                            display_str += " (Legendary Artifact!)"
-                        elif item_type == 'equipment':
-                            display_str += f" (Effect: {item_dict.get('effect_type', 'unknown')})"
-                            if item_dict in equipped_misc_items:
-                                display_str += " (EQUIPPED)"
-                        elif item_dict.get('description'):
-                            display_str += f" ({item_dict['description']})"
-                        print(display_str)
-                else:
-                    print("    (Empty)")
-
-                # Display keychain
-                print("Your Keychain:")
-                if player_keychain:
-                    for item_dict in player_keychain:
-                        print(f"    - {add_article(item_dict['name'])} (Type: {item_dict.get('key_type', '?')} key)")
-                else:
-                    print("    (Empty)")
-
-                print(f"Your Gold: {player_gold}")
-                print(f"Current Shield Defense: {player_shield_value.get('defense', 0) if player_shield_value else 0}") # Display value from item dict
-                print(f"Current Armor Defense: {equipped_armor_value.get('defense', 0) if equipped_armor_value else 0}") # Display value from item dict
-                # MODIFIED: Display cloak defense
-                print(f"Current Cloak Defense: {equipped_cloak.get('defense', 0) if equipped_cloak else 0}")
-                # MODIFIED: Update total defense calculation in display
-                print(f"Total Defense: {(player_shield_value.get('defense', 0) if player_shield_value else 0) + (equipped_armor_value.get('defense', 0) if equipped_armor_value else 0) + (equipped_cloak.get('defense', 0) if equipped_cloak else 0)}")
-                print(f"Attack Power: {player_attack_power} (+/-{player_attack_variance})")
-                print(f"Critical Chance: {player_crit_chance*100:.0f}% (x{player_crit_multiplier:.1f} Damage)")
-                if equipped_weapon:
-                    print(f"Equipped Weapon: {equipped_weapon['name']} (Damage: {equipped_weapon.get('damage', '?')})")
-                else:
-                    print("Equipped Weapon: Fists (Damage: 5)")
-
-                if player_effects:
-                    print("\n--- Active Effects ---")
-                    for effect in player_effects:
-                        print(f"  - {effect['message'].split('!')[0]} ({effect['duration']} turns remaining)")
-                    print("----------------------")
-                continue
-
+            display_inventory_and_stats(player_hp, max_hp, player_level, player_xp, xp_to_next_level, player_inventory, current_max_inventory_slots, player_keychain, player_gold, player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, equipped_weapon, equipped_misc_items, player_effects)
+            continue
         # NEW COMMAND: 'equipped'
         elif verb == "equipped":
             print("\n--- Currently Equipped Items ---")
@@ -3133,7 +3106,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 # --- NEW: Handle if the new room is an inn ---
                 while getattr(current_room, 'is_inn', False):
                     player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
-                        handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation)
+                        handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation, equipped_misc_items, player_effects, equipped_helmet)
 
                     print("You leave the inn to continue your journey.")
                     current_room = Room(player_level, player_quests) # Generate a new room
@@ -4150,7 +4123,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
 
         elif verb == "ohinn":
             player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
-                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation)
+                handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation, equipped_misc_items, player_effects, equipped_helmet)
             display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
 
         elif verb == "search":
@@ -4399,7 +4372,7 @@ def main():
                     while getattr(current_room, 'is_inn', False):
                         print("You load your game and find yourself in a welcoming inn.")
                         player_hp, max_hp, player_quests, player_inventory, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_level, player_keychain, stash, has_hideout_key = \
-                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation)
+                            handle_inn(player_hp, max_hp, player_quests, player_level, player_inventory, current_max_inventory_slots, player_gold, player_xp, xp_to_next_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_keychain, sound_manager, stash, has_hideout_key, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, player_reputation, equipped_misc_items, player_effects, equipped_helmet)
 
                         print("You leave the inn to continue your journey.")
                         current_room = Room(player_level, player_quests) # Generate a new room
