@@ -183,6 +183,9 @@ HORDE_SPAWN_CHANCE = 0.05
 # --- CRAFTING STATION CONSTANTS ---
 CRAFTING_STATION_SPAWN_CHANCE = 0.05
 
+# --- QUEST GIVER SPAWN CHANCE ---
+QUEST_GIVER_SPAWN_CHANCE = 0.15
+
 # --- SHOP CONSTANTS ---
 SELL_PRICE_MULTIPLIER = 0.5
 
@@ -2248,6 +2251,7 @@ class Room:
                 self.npc = None
                 self.hazard = None
                 self.puzzle = None
+                self.shrine = None
                 self.winning_item_just_spawned = False
                 self.boss_monster_spawned = False
                 self.awaiting_winning_item_pickup = False
@@ -2258,147 +2262,128 @@ class Room:
                     debug.debug_print(f"Special monster '{monster_name_to_spawn}' not found. Generating normal room.")
                 special_event_after_unlock = None
 
-        # --- Inn Generation ---
-        if random.random() < INN_SPAWN_CHANCE:
-            self.is_inn = True
-            return # Prevent other content from spawning
+        # --- Weighted Room Generation ---
+        special_room_options = {
+            'inn': INN_SPAWN_CHANCE,
+            'crafting_station': CRAFTING_STATION_SPAWN_CHANCE,
+            'horde': HORDE_SPAWN_CHANCE if HORDES else 0,
+            'vendor': VENDOR_SPAWN_CHANCE,
+            'shrine': SHRINE_SPAWN_CHANCE if SHRINES else 0,
+            'puzzle': PUZZLE_SPAWN_CHANCE if PUZZLES else 0,
+            'quest_giver': QUEST_GIVER_SPAWN_CHANCE if NPCs and player_quests is not None else 0,
+            'winning_item': WINNING_ITEM_SPAWN_CHANCE if player_current_level >= WINNING_ITEM_MIN_PLAYER_LEVEL else 0
+        }
 
-        if random.random() < CRAFTING_STATION_SPAWN_CHANCE:
+        # Filter out zero-chance options
+        choices = {room: chance for room, chance in special_room_options.items() if chance > 0}
+
+        total_special_chance = sum(choices.values())
+
+        chosen_room_type = 'normal'
+        if random.random() < total_special_chance:
+            # It's a special room. Now, which one?
+            room_types = list(choices.keys())
+            room_weights = list(choices.values())
+            chosen_room_type = random.choices(room_types, weights=room_weights, k=1)[0]
+
+        # --- Generate Room Based on Type ---
+        is_special_room = chosen_room_type != 'normal'
+
+        if chosen_room_type == 'inn':
+            self.is_inn = True
+            self.description = "You find yourself in a cozy, welcoming inn." # A default description
+        elif chosen_room_type == 'crafting_station':
             crafting_station_type = random.choice(["Altar", "Anvil"])
             self.description = f"You enter a room with a mystical {crafting_station_type}."
-            self.exits = {"south": True}
             self.crafting_station = crafting_station_type
-            return
-
-        if random.random() < HORDE_SPAWN_CHANCE and HORDES:
+        elif chosen_room_type == 'horde':
             self.is_horde_room = True
             self.horde_data = random.choice(HORDES)
-            return
-
-        adj = random.choice(ADJECTIVES)
-        room_type = random.choice(ROOM_TYPES)
-        detail = random.choice(DETAILS)
-        self.description = f"You are in a {adj} {room_type}. You notice {detail}."
-
-        self.exits = {}
-        self.locked_exits = {}
-        all_possible_directions = ["north", "south", "east", "west"]
-        opposites = {'north': 'south', 'south': 'north', 'east': 'west', 'west': 'east'}
-
-        # All directions are initially available for random generation
-        available_directions_for_random = all_possible_directions[:]
-
-        # If entering from a specific direction, guarantee an exit back.
-        if entry_direction and entry_direction in opposites:
-            back_direction = opposites[entry_direction]
-            self.exits[back_direction] = True
-            # This direction is now taken, remove it from random generation pool.
-            available_directions_for_random.remove(back_direction)
-
-        # We must have at least one exit. If the back-exit wasn't created, create one now.
-        if not self.exits and available_directions_for_random:
-            guaranteed_unlocked_direction = random.choice(available_directions_for_random)
-            self.exits[guaranteed_unlocked_direction] = True
-            available_directions_for_random.remove(guaranteed_unlocked_direction)
-
-        # Now, for the remaining available directions, randomly create more exits.
-        for direction in available_directions_for_random:
-            rand_roll = random.random()
-            if rand_roll < 0.25: # Same probability as before
-                self.exits[direction] = True
-            elif rand_roll < 0.45: # Same probability as before
-                key_type = random.choice(["rusty", "silver", "bone"])
-                self.locked_exits[direction] = key_type
-
-        self.item = None # Explicitly None by default
-        self.npc = None
-        self.hazard = None
-        self.monster = None
-        self.puzzle = None
-        self.shrine = None
-        self.winning_item_just_spawned = False # Track if winning item just appeared
-        self.boss_monster_spawned = False # Track if boss monster has appeared yet
-        self.awaiting_winning_item_pickup = False # Track if player needs to pick up winning item
-
-        content_roll = random.random()
-
-        # Content generation priority (higher up = checked first)
-        # 1. Dedicated Vendor Spawn Chance
-        if random.random() < VENDOR_SPAWN_CHANCE:
+            self.description = f"The air is thick with dread. You've stumbled into a {self.horde_data['name']}!"
+        elif chosen_room_type == 'vendor':
             vendor_npc_def = next((n for n in NPCs if n.get('type') == 'vendor'), None)
             if vendor_npc_def:
                 self.npc = dict(vendor_npc_def)
                 self.npc['talked_to'] = False
-            return
-
-        # 1.25. Shrine Spawn Chance
-        if SHRINES and random.random() < SHRINE_SPAWN_CHANCE:
+        elif chosen_room_type == 'shrine':
             self.shrine = copy.deepcopy(random.choice(SHRINES))
-            self.shrine['used'] = False # Mark as not used
-            return # A shrine room should not have other major features
-
-        # 1.5. Puzzle Room Spawn Chance
-        if PUZZLES and random.random() < PUZZLE_SPAWN_CHANCE:
-            # Ensure item_delivery puzzles don't block exits
+            self.shrine['used'] = False
+        elif chosen_room_type == 'puzzle':
             eligible_puzzles = [p for p in PUZZLES if not (p.get('type') == 'item_delivery' and p.get('reward_type') == 'exit')]
             if eligible_puzzles:
                 self.puzzle = dict(random.choice(eligible_puzzles))
                 self.puzzle['solved'] = False
-            return
-
-        # 1.75. Quest Giver NPC Spawn Chance
-        if NPCs and player_quests is not None and random.random() < 0.15:
+        elif chosen_room_type == 'quest_giver':
             all_quest_givers = [n for n in NPCs if n.get('type') == 'quest_giver']
             available_quest_givers = []
             for npc in all_quest_givers:
                 quest_id = npc.get('current_quest_id')
                 if not quest_id:
                     continue
-
                 quest_def = get_quest_by_id(quest_id)
                 if not quest_def:
                     continue
-
-                # Check if quest is already completed or active
                 quest_status = get_player_quest_status(player_quests, quest_id)
                 if quest_status == 'completed' or quest_status == 'active':
                     continue
-
-                # Check for level requirement
                 if player_current_level < quest_def.get('required_level', 1):
                     continue
-
-                # Check for prerequisite quest
                 prereq_quest_id = quest_def.get('prerequisite_quest')
                 if prereq_quest_id:
                     prereq_status = get_player_quest_status(player_quests, prereq_quest_id)
                     if prereq_status != 'completed':
                         continue
-
-                # If all checks pass, the quest giver is available
                 available_quest_givers.append(npc)
-
             if available_quest_givers:
                 self.npc = dict(random.choice(available_quest_givers))
                 self.npc['talked_to'] = False
-                return
-
-        # 2. Winning Item Spawn (level-gated) - Item spawns, boss does NOT, boss spawns on 'get'
-        if player_current_level >= WINNING_ITEM_MIN_PLAYER_LEVEL and content_roll < WINNING_ITEM_SPAWN_CHANCE:
+        elif chosen_room_type == 'winning_item':
             winning_item_candidates = [item for item in ALL_ITEMS if item.get('type') == 'winning_item']
             if winning_item_candidates:
                 self.item = random.choice(winning_item_candidates)
-                self.winning_item_just_spawned = True # Mark that winning item just spawned
-                self.awaiting_winning_item_pickup = True # Player must pick it up before anything else
-                # Boss monster is NOT set here, it will be set in the 'get' command handler
+                self.winning_item_just_spawned = True
+                self.awaiting_winning_item_pickup = True
                 print("\n" + "=" * 40)
                 print("A powerful aura emanates from something nearby...")
                 print(f"You sense a legendary artifact is close! You see {add_article(self.item['name'])} on the floor.")
                 print("=" * 40)
-                return # Crucial: prevent other content from spawning if winning item is present
 
-        # 3. Other Room Content (if no primary content was generated)
-        else:
+        # --- Generate Standard Room Description if not set by a special type ---
+        if not self.description:
+            adj = random.choice(ADJECTIVES)
+            room_type_desc = random.choice(ROOM_TYPES)
+            detail = random.choice(DETAILS)
+            self.description = f"You are in a {adj} {room_type_desc}. You notice {detail}."
+
+        # --- Generate Exits (for all rooms) ---
+        self.exits = {}
+        self.locked_exits = {}
+        all_possible_directions = ["north", "south", "east", "west"]
+        opposites = {'north': 'south', 'south': 'north', 'east': 'west', 'west': 'east'}
+        available_directions_for_random = all_possible_directions[:]
+
+        if entry_direction and entry_direction in opposites:
+            back_direction = opposites[entry_direction]
+            self.exits[back_direction] = True
+            if back_direction in available_directions_for_random:
+                available_directions_for_random.remove(back_direction)
+
+        if not self.exits and available_directions_for_random:
+            guaranteed_unlocked_direction = random.choice(available_directions_for_random)
+            self.exits[guaranteed_unlocked_direction] = True
+            available_directions_for_random.remove(guaranteed_unlocked_direction)
+
+        for direction in available_directions_for_random:
+            rand_roll = random.random()
+            if rand_roll < 0.25:
+                self.exits[direction] = True
+            elif rand_roll < 0.45:
+                key_type = random.choice(["rusty", "silver", "bone"])
+                self.locked_exits[direction] = key_type
+
+        # --- Generate Secondary Content (only for 'normal' rooms) ---
+        if not is_special_room:
+            # This is where the logic for items, non-special NPCs, hazards, and monsters goes.
             secondary_content_roll = random.random()
 
             item_spawn_threshold = 0.35
@@ -2407,85 +2392,44 @@ class Room:
             monster_spawn_threshold = hazard_spawn_threshold + 0.20
 
             if secondary_content_roll < item_spawn_threshold:
+                # Item generation logic...
                 item_spawn_weights_from_json = GAME_DATA.get('item_spawn_weights', {})
-
                 possible_items_with_weights = []
-
                 for item_def in ALL_ITEMS:
                     item_type = item_def.get('type')
-
-                    if item_type == 'winning_item':
-                        continue
-
-                    weight = 0
-                    if item_type == 'backpack':
-                        weight = item_spawn_weights_from_json.get('backpack', 0)
-                    elif item_type == 'shield':
-                        weight = item_spawn_weights_from_json.get('shield', 0)
-                    elif item_type == 'armor': # MODIFIED: Check for subtypes within armor
-                        item_subtype = item_def.get('subtype')
-                        if item_subtype == 'body_armor':
-                            weight = item_spawn_weights_from_json.get('armor_body', 0)
-                        elif item_subtype == 'cloak':
-                            weight = item_spawn_weights_from_json.get('armor_cloak', 0)
-                        else: # Fallback for old armor entries without subtype
-                            weight = item_spawn_weights_from_json.get('armor', 0)
-                    elif item_type == 'weapon':
-                        weight = item_spawn_weights_from_json.get('weapon', 0)
-                    elif item_type == 'key':
-                        weight = item_spawn_weights_from_json.get('key', 0)
-                    elif item_type == 'consumable':
-                        if item_def.get('effect_type') == 'heal':
-                            weight = item_spawn_weights_from_json.get('consumable_healing', 0)
-                        else:
-                            weight = item_spawn_weights_from_json.get('consumable_other', 0)
-                    elif item_type == 'misc' or item_type == 'equipment':
-                                                weight = item_spawn_weights_from_json.get('default', 0)
-
+                    if item_type == 'winning_item': continue
+                    weight = item_spawn_weights_from_json.get(item_def.get('subtype', item_type), item_spawn_weights_from_json.get('default', 0))
                     if weight > 0:
                         possible_items_with_weights.append((item_def, weight))
-
                 if possible_items_with_weights:
-                    items_to_choose_from = [item_tuple[0] for item_tuple in possible_items_with_weights]
-                    weights_for_choices = [item_tuple[1] for item_tuple in possible_items_with_weights]
-
-                    chosen_item = random.choices(items_to_choose_from, weights=weights_for_choices, k=1)[0]
+                    items, weights = zip(*possible_items_with_weights)
+                    chosen_item = random.choices(items, weights=weights, k=1)[0]
                     self.item = scale_item_for_player_level(chosen_item, player_current_level)
 
             elif secondary_content_roll < npc_spawn_threshold:
-                non_quest_npcs = [n for n in NPCs if n.get('type') != 'vendor' and n.get('type') != 'quest_giver']
-
-                # Filter out NPCs that require a quest the player doesn't have
-                eligible_npcs = []
-                for npc in non_quest_npcs:
-                    required_quest = npc.get('requires_quest')
-                    if not required_quest or (required_quest and player_quests.get(required_quest, {}).get('status') == 'active'):
-                        eligible_npcs.append(npc)
-
+                # Non-special NPC generation logic...
+                eligible_npcs = [n for n in NPCs if n.get('type') not in ['vendor', 'quest_giver']]
                 if eligible_npcs:
                     self.npc = dict(random.choice(eligible_npcs))
                     self.npc['talked_to'] = False
+
             elif secondary_content_roll < hazard_spawn_threshold:
                 if HAZARDS:
                     self.hazard = random.choice(HAZARDS)
                     if self.hazard.get('hidden'):
                         self.hazard['is_currently_hidden'] = True
                     self.hazard['disarmed'] = False
+
             elif secondary_content_roll < monster_spawn_threshold:
                 if MONSTERS:
-                    eligible_monsters = []
-                    monster_weights = []
-
+                    eligible_monsters, monster_weights = [], []
                     for monster_def in MONSTERS:
-                        monster_level = monster_def.get('level', 1)
-                        level_difference = monster_level - player_current_level
-
-                        if MONSTER_SPAWN_LEVEL_MIN_OFFSET <= level_difference <= MONSTER_SPAWN_LEVEL_MAX_OFFSET:
-                            weight_multiplier = MONSTER_LEVEL_WEIGHTS.get(level_difference, 0)
-                            if weight_multiplier > 0:
+                        level_diff = monster_def.get('level', 1) - player_current_level
+                        if MONSTER_SPAWN_LEVEL_MIN_OFFSET <= level_diff <= MONSTER_SPAWN_LEVEL_MAX_OFFSET:
+                            weight = MONSTER_LEVEL_WEIGHTS.get(level_diff, 0)
+                            if weight > 0:
                                 eligible_monsters.append(monster_def)
-                                monster_weights.append(weight_multiplier)
-
+                                monster_weights.append(weight)
                     if eligible_monsters:
                         self.monster = dict(random.choices(eligible_monsters, weights=monster_weights, k=1)[0])
 
