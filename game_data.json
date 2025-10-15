@@ -4718,6 +4718,7 @@
     {
       "name": "Fiery",
       "type": "weapon",
+      "cost": 50,
       "effect": {
         "damage_boost": {
           "type": "fire",
@@ -4728,6 +4729,7 @@
     {
       "name": "Venomous",
       "type": "weapon",
+      "cost": 75,
       "effect": {
         "status_effect": {
           "name": "Poison",
@@ -4738,6 +4740,7 @@
     {
       "name": "Protective",
       "type": "armor",
+      "cost": 100,
       "effect": {
         "defense_boost": 5
       }

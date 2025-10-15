@@ -2855,7 +2855,8 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 else:
                     print("Available crafting recipes:")
                     for i, recipe in enumerate(crafting_recipes):
-                        print(f"  {i+1}. {recipe['name']}")
+                        ingredients = ", ".join([f"{ingredient['quantity']}x {ingredient['name']}" for ingredient in recipe['ingredients']])
+                        print(f"  {i+1}. {recipe['name']} (Requires: {ingredients})")
 
                     choice = input("Enter the number of the item you want to craft, or 'back': ").strip()
                     if choice.lower() == 'back':
@@ -2897,7 +2898,7 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                 else:
                     print("Available enchantments:")
                     for i, enchantment in enumerate(enchantments):
-                        print(f"  {i+1}. {enchantment['name']}")
+                        print(f"  {i+1}. {enchantment['name']} (for {enchantment['type']}) - Cost: {enchantment['cost']} gold")
 
                     choice = input("Enter the number of the enchantment you want to apply, or 'back': ").strip()
                     if choice.lower() == 'back':
@@ -2908,21 +2909,23 @@ def game_loop(player_hp, max_hp, player_inventory, current_room, current_max_inv
                         if 0 <= enchantment_index < len(enchantments):
                             selected_enchantment = enchantments[enchantment_index]
 
-                            item_to_enchant_name = input("Enter the name of the item to enchant: ").strip()
+                            if player_gold < selected_enchantment['cost']:
+                                print("You don't have enough gold to apply this enchantment.")
+                                continue
+
+                            item_to_enchant_name = input(f"Enter the name of the {selected_enchantment['type']} to enchant: ").strip()
                             item_to_enchant = None
                             for item in player_inventory:
-                                if item['name'].lower() == item_to_enchant_name.lower():
+                                if item['name'].lower() == item_to_enchant_name.lower() and item.get('type') == selected_enchantment.get('type'):
                                     item_to_enchant = item
                                     break
 
                             if item_to_enchant:
-                                if item_to_enchant.get('type') == selected_enchantment.get('type'):
-                                    item_to_enchant['enchantment'] = selected_enchantment['name']
-                                    print(f"You successfully enchanted the {item_to_enchant['name']} with {selected_enchantment['name']}!")
-                                else:
-                                    print(f"You can't apply this enchantment to a {item_to_enchant.get('type')}.")
+                                player_gold -= selected_enchantment['cost']
+                                item_to_enchant['enchantment'] = selected_enchantment['name']
+                                print(f"You successfully enchanted the {item_to_enchant['name']} with {selected_enchantment['name']} for {selected_enchantment['cost']} gold!")
                             else:
-                                print("You don't have that item.")
+                                print(f"You don't have that item or it's not a {selected_enchantment['type']}.")
                         else:
                             print("Invalid enchantment number.")
                     except ValueError:
