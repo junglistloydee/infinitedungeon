@@ -318,7 +318,10 @@ def calculate_xp_for_next_level(current_level):
 def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points):
     """Applies level-up bonuses to player stats."""
     player_level += 1
-    player_skill_points += 1
+    skill_point_gained = False
+    if player_level % 3 == 0 and player_level <= 15:
+        player_skill_points += 1
+        skill_point_gained = True
 
     old_max_hp = max_hp
     max_hp += HP_GAIN_PER_LEVEL
@@ -337,7 +340,8 @@ def level_up_player(player_hp, max_hp, player_level, player_attack_power, player
     print(f"Your Max HP increased from {old_max_hp} to {max_hp}!")
     print(f"Your Attack Power increased to {player_attack_power}!")
     print(f"Your Critical Chance increased to {player_crit_chance*100:.0f}%!")
-    print(f"You have gained a skill point! You now have {player_skill_points} skill point(s).")
+    if skill_point_gained:
+        print(f"You have gained a skill point! You now have {player_skill_points} skill point(s).")
     print(f"You feel fully revitalized!")
     print("#" * 50)
 
@@ -364,38 +368,100 @@ def handle_skill_tree(player_class, player_level, player_skill_points, player_un
         print("Invalid class. Cannot display skill tree.")
         return player_skill_points, player_unlocked_skills
 
-    print(f"\n--- {player_class} Skill Tree ---")
-    print(f"You have {player_skill_points} skill point(s).")
-
     skill_tree = class_data['skill_tree']
-    for skill in skill_tree:
-        status = "Unlocked" if skill['name'] in player_unlocked_skills else "Locked"
-        print(f"  - {skill['name']} (Level {skill['level_unlocked']}) - {skill['description']} [{status}]")
+    ascii_tree = class_data['ascii_tree']
+    skill_map = {skill['id']: skill for skill in skill_tree}
 
-    if player_skill_points > 0:
-        unlock_choice = input("\nEnter the name of the skill you want to unlock, or 'back': ").strip()
-        if unlock_choice.lower() == 'back':
-            return player_skill_points, player_unlocked_skills
+    while True:
+        print(f"\n--- {player_class} Skill Tree ---")
+        print(f"You have {player_skill_points} skill point(s).")
 
-        skill_to_unlock = None
-        for skill in skill_tree:
-            if skill['name'].lower() == unlock_choice.lower():
-                skill_to_unlock = skill
-                break
+        # Display ASCII skill tree with status
+        for line in ascii_tree:
+            for skill_id, skill_data in skill_map.items():
+                placeholder = f"({skill_id})"
+                if placeholder in line:
+                    skill_name = skill_data['name']
+                    status = ""
+                    if skill_name in player_unlocked_skills:
+                        status = "[Unlocked]"
+                    elif player_level >= skill_data['level_unlocked']:
+                        is_unlockable = True
+                        if 'dependencies' in skill_data:
+                            for dep_id in skill_data['dependencies']:
+                                if skill_map.get(dep_id) and skill_map[dep_id]['name'] not in player_unlocked_skills:
+                                    is_unlockable = False
+                                    break
+                        if is_unlockable:
+                            status = "[Available]"
+                        else:
+                            status = "[Locked]"
+                    else:
+                        status = "[Locked]"
 
-        if skill_to_unlock:
-            if skill_to_unlock['name'] in player_unlocked_skills:
+                    line = line.replace(placeholder, f"({skill_id}) {skill_name} {status}")
+            print(line)
+
+        print("\nCommands: unlock <skill_id>, view <skill_id>, back")
+        choice = input("Enter your command: ").strip().lower()
+
+        if choice == 'back':
+            break
+
+        parts = choice.split()
+        if len(parts) != 2:
+            print("Invalid command format.")
+            continue
+
+        command, skill_id_str = parts
+        if not skill_id_str.isdigit():
+            print("Invalid skill ID.")
+            continue
+
+        skill_id = int(skill_id_str)
+        skill_to_act = skill_map.get(skill_id)
+
+        if not skill_to_act:
+            print("Skill ID not found.")
+            continue
+
+        if command == 'view':
+            print(f"\n--- {skill_to_act['name']} ---")
+            print(f"Description: {skill_to_act['description']}")
+            print(f"Required Level: {skill_to_act['level_unlocked']}")
+            if 'dependencies' in skill_to_act and skill_to_act['dependencies']:
+                dep_names = [skill_map[dep_id]['name'] for dep_id in skill_to_act['dependencies'] if skill_map.get(dep_id)]
+                if dep_names:
+                    print(f"Requires: {', '.join(dep_names)}")
+            input("Press Enter to continue...")
+
+        elif command == 'unlock':
+            if player_skill_points <= 0:
+                print("You have no skill points to spend.")
+                continue
+
+            if skill_to_act['name'] in player_unlocked_skills:
                 print("You have already unlocked this skill.")
-            elif player_level >= skill_to_unlock['level_unlocked']:
+                continue
+
+            if player_level < skill_to_act['level_unlocked']:
+                print(f"You need to be level {skill_to_act['level_unlocked']} to unlock this skill.")
+                continue
+
+            can_unlock = True
+            if 'dependencies' in skill_to_act:
+                for dep_id in skill_to_act['dependencies']:
+                    if skill_map.get(dep_id) and skill_map[dep_id]['name'] not in player_unlocked_skills:
+                        print(f"You must unlock '{skill_map[dep_id]['name']}' first.")
+                        can_unlock = False
+                        break
+
+            if can_unlock:
                 player_skill_points -= 1
-                player_unlocked_skills.append(skill_to_unlock['name'])
-                print(f"You have unlocked '{skill_to_unlock['name']}'!")
-            else:
-                print(f"You need to be level {skill_to_unlock['level_unlocked']} to unlock this skill.")
+                player_unlocked_skills.append(skill_to_act['name'])
+                print(f"You have unlocked '{skill_to_act['name']}'!")
         else:
-            print("Invalid skill name.")
-    else:
-        input("Press Enter to continue...")
+            print("Invalid command.")
 
     return player_skill_points, player_unlocked_skills
 
