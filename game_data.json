@@ -4745,5 +4745,21 @@
         "defense_boost": 5
       }
     }
+  ],
+  "combination_recipes": [
+    {
+      "name": "Large Healing Potion",
+      "ingredients": [
+        {"name": "healing potion", "quantity": 2}
+      ],
+      "result": "large healing potion"
+    },
+    {
+      "name": "Super Healing Potion",
+      "ingredients": [
+        {"name": "large healing potion", "quantity": 2}
+      ],
+      "result": "super healing potion"
+    }
   ]
 }
