@@ -2105,6 +2105,68 @@
       "type": "crafting_material",
       "description": "A chunk of raw iron ore.",
       "shop_price": 5
+    },
+    {
+      "name": "Shadow-Woven Aegis",
+      "type": "armor",
+      "subtype": "cloak",
+      "defense": 8,
+      "description": "A cloak that seems to drink the light, making its wearer harder to hit.",
+      "shop_price": 250,
+      "effects": {
+        "evade_chance": 0.1
+      }
+    },
+    {
+      "name": "Bulwark of the Ancients",
+      "type": "armor",
+      "subtype": "body_armor",
+      "defense": 20,
+      "description": "Plate armor reinforced with an iron shield and a mysterious gem. It resonates with protective energy.",
+      "shop_price": 400,
+      "effects": {
+        "reflect_damage_chance": 0.25,
+        "reflect_damage_percentage": 0.1
+      }
+    },
+    {
+      "name": "Soul-Stealers Scythe",
+      "type": "weapon",
+      "damage": 28,
+      "description": "A grim axe fused with a cursed idol. It seems to hunger for life force.",
+      "shop_price": 350,
+      "effects": {
+        "lifesteal_percentage": 0.1
+      }
+    },
+    {
+      "name": "Stormcallers Staff",
+      "type": "weapon",
+      "damage": 35,
+      "description": "A staff crackling with elemental power, capped with a swirling orb of energy.",
+      "shop_price": 500,
+      "effects": {
+        "chain_lightning_chance": 0.2,
+        "chain_lightning_damage": 15
+      }
+    },
+    {
+      "name": "Amulet of Swiftness",
+      "type": "magical_artifact",
+      "description": "A simple amulet made from monstrous parts that quickens the wearers reflexes.",
+      "shop_price": 200,
+      "effects": {
+        "first_strike": true
+      }
+    },
+    {
+      "name": "Gem of True Sight",
+      "type": "magical_artifact",
+      "description": "A powerful gem that reveals hidden truths and enemy weaknesses.",
+      "shop_price": 600,
+      "effects": {
+        "crit_chance_boost": 0.1
+      }
     }
   ],
   "npcs": [
@@ -4348,18 +4410,163 @@
   "character_classes": {
     "Reaver": {
       "description": "A fierce warrior who thrives in the heat of battle, using rage and powerful swings to crush their enemies.",
-      "starting_stats": { "max_hp": 120, "attack_power": 12, "attack_variance": 3, "crit_chance": 0.15, "crit_multiplier": 1.6 },
-      "starting_equipment": [ "battle-worn axe", "wooden shield", "leather jerkin" ],
+      "starting_stats": {
+        "max_hp": 120,
+        "attack_power": 12,
+        "attack_variance": 3,
+        "crit_chance": 0.15,
+        "crit_multiplier": 1.6
+      },
+      "starting_equipment": [
+        "battle-worn axe",
+        "wooden shield",
+        "leather jerkin"
+      ],
       "skill_tree": [
-        { "id": 1, "name": "Power Strike", "description": "A powerful attack that deals 50% extra damage.", "level_unlocked": 3, "dependencies": [], "effect": { "type": "damage_boost", "value": 1.5 } },
-        { "id": "2a", "name": "Furious Assault", "description": "Increases your attack power by 5 for 5 turns.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "stat_buff", "stat": "attack_power", "value": 5, "duration": 5 }, "branch": "a" },
-        { "id": "2b", "name": "Defensive Stance", "description": "Increases your defense by 10 for 5 turns.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "stat_buff", "stat": "defense", "value": 10, "duration": 5 }, "branch": "b" },
-        { "id": "3a", "name": "Reckless Abandon", "description": "Increases crit chance by 15% for 5 turns, but lowers defense by 5.", "level_unlocked": 9, "dependencies": ["2a"], "effect": { "type": "multi_buff", "effects": [{ "stat": "crit_chance", "value": 0.15, "duration": 5 }, { "stat": "defense", "value": -5, "duration": 5 }] }, "branch": "a" },
-        { "id": "3b", "name": "Shield Bash", "description": "A shield attack with a 40% chance to stun the enemy for 1 turn (requires shield).", "level_unlocked": 9, "dependencies": ["2b"], "effect": { "type": "stun", "chance": 0.4, "requires": "shield" }, "branch": "b" },
-        { "id": "4a", "name": "Sunder Armor", "description": "A powerful strike that permanently reduces enemy defense by 5 for the duration of combat.", "level_unlocked": 12, "dependencies": ["3a"], "effect": { "type": "debuff", "stat": "defense", "value": -5 }, "branch": "a" },
-        { "id": "4b", "name": "Unstoppable", "description": "Removes all negative status effects and grants immunity for 2 turns.", "level_unlocked": 12, "dependencies": ["3b"], "effect": { "type": "dispel_and_immunity", "duration": 2 }, "branch": "b" },
-        { "id": "5a", "name": "Execute", "description": "Deals massive damage to enemies below 25% health.", "level_unlocked": 15, "dependencies": ["4a"], "effect": { "type": "execute", "health_threshold": 0.25, "damage_multiplier": 3.0 }, "branch": "a" },
-        { "id": "5b", "name": "Last Stand", "description": "When below 25% health, gain a massive 30-point defense boost for 3 turns.", "level_unlocked": 15, "dependencies": ["4b"], "effect": { "type": "conditional_buff", "health_threshold": 0.25, "stat": "defense", "value": 30, "duration": 3 }, "branch": "b" }
+        {
+          "id": 1,
+          "name": "Power Strike",
+          "description": "A powerful attack that deals 50% extra damage.",
+          "level_unlocked": 3,
+          "dependencies": [],
+          "effect": {
+            "type": "damage_boost",
+            "value": 1.5
+          }
+        },
+        {
+          "id": "2a",
+          "name": "Furious Assault",
+          "description": "Increases your attack power by 5 for 5 turns.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "stat_buff",
+            "stat": "attack_power",
+            "value": 5,
+            "duration": 5
+          },
+          "branch": "a"
+        },
+        {
+          "id": "2b",
+          "name": "Defensive Stance",
+          "description": "Increases your defense by 10 for 5 turns.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "stat_buff",
+            "stat": "defense",
+            "value": 10,
+            "duration": 5
+          },
+          "branch": "b"
+        },
+        {
+          "id": "3a",
+          "name": "Reckless Abandon",
+          "description": "Increases crit chance by 15% for 5 turns, but lowers defense by 5.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2a"
+          ],
+          "effect": {
+            "type": "multi_buff",
+            "effects": [
+              {
+                "stat": "crit_chance",
+                "value": 0.15,
+                "duration": 5
+              },
+              {
+                "stat": "defense",
+                "value": -5,
+                "duration": 5
+              }
+            ]
+          },
+          "branch": "a"
+        },
+        {
+          "id": "3b",
+          "name": "Shield Bash",
+          "description": "A shield attack with a 40% chance to stun the enemy for 1 turn (requires shield).",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2b"
+          ],
+          "effect": {
+            "type": "stun",
+            "chance": 0.4,
+            "requires": "shield"
+          },
+          "branch": "b"
+        },
+        {
+          "id": "4a",
+          "name": "Sunder Armor",
+          "description": "A powerful strike that permanently reduces enemy defense by 5 for the duration of combat.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3a"
+          ],
+          "effect": {
+            "type": "debuff",
+            "stat": "defense",
+            "value": -5
+          },
+          "branch": "a"
+        },
+        {
+          "id": "4b",
+          "name": "Unstoppable",
+          "description": "Removes all negative status effects and grants immunity for 2 turns.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3b"
+          ],
+          "effect": {
+            "type": "dispel_and_immunity",
+            "duration": 2
+          },
+          "branch": "b"
+        },
+        {
+          "id": "5a",
+          "name": "Execute",
+          "description": "Deals massive damage to enemies below 25% health.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4a"
+          ],
+          "effect": {
+            "type": "execute",
+            "health_threshold": 0.25,
+            "damage_multiplier": 3.0
+          },
+          "branch": "a"
+        },
+        {
+          "id": "5b",
+          "name": "Last Stand",
+          "description": "When below 25% health, gain a massive 30-point defense boost for 3 turns.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4b"
+          ],
+          "effect": {
+            "type": "conditional_buff",
+            "health_threshold": 0.25,
+            "stat": "defense",
+            "value": 30,
+            "duration": 3
+          },
+          "branch": "b"
+        }
       ],
       "ascii_tree": [
         "      (1)      ",
@@ -4376,18 +4583,145 @@
     },
     "Whisper": {
       "description": "A master of shadows and subtlety, the Whisper excels at exploiting enemy weaknesses and striking from the darkness.",
-      "starting_stats": { "max_hp": 90, "attack_power": 9, "attack_variance": 2, "crit_chance": 0.25, "crit_multiplier": 2.0 },
-      "starting_equipment": [ "poisoned dagger", "hooded cloak" ],
+      "starting_stats": {
+        "max_hp": 90,
+        "attack_power": 9,
+        "attack_variance": 2,
+        "crit_chance": 0.25,
+        "crit_multiplier": 2.0
+      },
+      "starting_equipment": [
+        "poisoned dagger",
+        "hooded cloak"
+      ],
       "skill_tree": [
-        { "id": 1, "name": "Shadow Strike", "description": "A guaranteed critical hit.", "level_unlocked": 3, "dependencies": [], "effect": { "type": "guaranteed_crit" } },
-        { "id": "2a", "name": "Expose Weakness", "description": "Increases all damage taken by the enemy by 20% for 3 turns.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "vulnerability", "value": 0.2, "duration": 3 }, "branch": "a" },
-        { "id": "2b", "name": "Venomous Blades", "description": "Poisons the enemy, dealing 10 damage per turn for 3 turns.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "poison", "damage": 10, "duration": 3 }, "branch": "b" },
-        { "id": "3a", "name": "Gouge", "description": "An attack that causes the enemy to bleed, dealing 15 damage per turn for 3 turns.", "level_unlocked": 9, "dependencies": ["2a"], "effect": { "type": "bleed", "damage": 15, "duration": 3 }, "branch": "a" },
-        { "id": "3b", "name": "Crippling Poison", "description": "A poison that also reduces the enemy's attack power by 5 for 3 turns.", "level_unlocked": 9, "dependencies": ["2b"], "effect": { "type": "poison_and_debuff", "damage": 10, "duration": 3, "stat": "attack_power", "value": -5 }, "branch": "b" },
-        { "id": "4a", "name": "Mark for Death", "description": "The next attack against the marked target is a guaranteed critical hit.", "level_unlocked": 12, "dependencies": ["3a"], "effect": { "type": "mark_for_death" }, "branch": "a" },
-        { "id": "4b", "name": "Smoke Bomb", "description": "Guarantees escape from a non-boss battle.", "level_unlocked": 12, "dependencies": ["3b"], "effect": { "type": "escape" }, "branch": "b" },
-        { "id": "5a", "name": "Assassinate", "description": "A precise strike with a 15% chance to instantly kill a non-boss enemy.", "level_unlocked": 15, "dependencies": ["4a"], "effect": { "type": "instant_kill", "chance": 0.15 }, "branch": "a" },
-        { "id": "5b", "name": "Garrote", "description": "A powerful attack with a 60% chance to stun an enemy for 2 turns.", "level_unlocked": 15, "dependencies": ["4b"], "effect": { "type": "stun", "chance": 0.6, "duration": 2 }, "branch": "b" }
+        {
+          "id": 1,
+          "name": "Shadow Strike",
+          "description": "A guaranteed critical hit.",
+          "level_unlocked": 3,
+          "dependencies": [],
+          "effect": {
+            "type": "guaranteed_crit"
+          }
+        },
+        {
+          "id": "2a",
+          "name": "Expose Weakness",
+          "description": "Increases all damage taken by the enemy by 20% for 3 turns.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "vulnerability",
+            "value": 0.2,
+            "duration": 3
+          },
+          "branch": "a"
+        },
+        {
+          "id": "2b",
+          "name": "Venomous Blades",
+          "description": "Poisons the enemy, dealing 10 damage per turn for 3 turns.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "poison",
+            "damage": 10,
+            "duration": 3
+          },
+          "branch": "b"
+        },
+        {
+          "id": "3a",
+          "name": "Gouge",
+          "description": "An attack that causes the enemy to bleed, dealing 15 damage per turn for 3 turns.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2a"
+          ],
+          "effect": {
+            "type": "bleed",
+            "damage": 15,
+            "duration": 3
+          },
+          "branch": "a"
+        },
+        {
+          "id": "3b",
+          "name": "Crippling Poison",
+          "description": "A poison that also reduces the enemy's attack power by 5 for 3 turns.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2b"
+          ],
+          "effect": {
+            "type": "poison_and_debuff",
+            "damage": 10,
+            "duration": 3,
+            "stat": "attack_power",
+            "value": -5
+          },
+          "branch": "b"
+        },
+        {
+          "id": "4a",
+          "name": "Mark for Death",
+          "description": "The next attack against the marked target is a guaranteed critical hit.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3a"
+          ],
+          "effect": {
+            "type": "mark_for_death"
+          },
+          "branch": "a"
+        },
+        {
+          "id": "4b",
+          "name": "Smoke Bomb",
+          "description": "Guarantees escape from a non-boss battle.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3b"
+          ],
+          "effect": {
+            "type": "escape"
+          },
+          "branch": "b"
+        },
+        {
+          "id": "5a",
+          "name": "Assassinate",
+          "description": "A precise strike with a 15% chance to instantly kill a non-boss enemy.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4a"
+          ],
+          "effect": {
+            "type": "instant_kill",
+            "chance": 0.15
+          },
+          "branch": "a"
+        },
+        {
+          "id": "5b",
+          "name": "Garrote",
+          "description": "A powerful attack with a 60% chance to stun an enemy for 2 turns.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4b"
+          ],
+          "effect": {
+            "type": "stun",
+            "chance": 0.6,
+            "duration": 2
+          },
+          "branch": "b"
+        }
       ],
       "ascii_tree": [
         "      (1)      ",
@@ -4404,18 +4738,149 @@
     },
     "Prodigy": {
       "description": "A gifted sorcerer who commands the elements, unleashing devastating spells from a distance.",
-      "starting_stats": { "max_hp": 80, "attack_power": 15, "attack_variance": 5, "crit_chance": 0.1, "crit_multiplier": 1.8 },
-      "starting_equipment": [ "ancient staff", "shimmering cloak" ],
+      "starting_stats": {
+        "max_hp": 80,
+        "attack_power": 15,
+        "attack_variance": 5,
+        "crit_chance": 0.1,
+        "crit_multiplier": 1.8
+      },
+      "starting_equipment": [
+        "ancient staff",
+        "shimmering cloak"
+      ],
       "skill_tree": [
-        { "id": 1, "name": "Fireball", "description": "Deals 30 area-of-effect damage to all enemies.", "level_unlocked": 3, "dependencies": [], "effect": { "type": "aoe_damage", "damage": 30 } },
-        { "id": "2a", "name": "Combustion", "description": "Causes the target to burn, taking 10 fire damage per turn for 3 turns.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "burn", "damage": 10, "duration": 3 }, "branch": "a" },
-        { "id": "2b", "name": "Ice Shard", "description": "A shard of ice with a 50% chance to freeze an enemy for 1 turn.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "freeze", "chance": 0.5, "duration": 1 }, "branch": "b" },
-        { "id": "3a", "name": "Flame Wall", "description": "Creates a wall of fire that deals 15 damage to all enemies for 3 turns.", "level_unlocked": 9, "dependencies": ["2a"], "effect": { "type": "aoe_dot", "damage": 15, "duration": 3 }, "branch": "a" },
-        { "id": "3b", "name": "Frost Nova", "description": "A burst of cold that damages all enemies for 20 and has a 30% chance to freeze them.", "level_unlocked": 9, "dependencies": ["2b"], "effect": { "type": "aoe_freeze", "damage": 20, "chance": 0.3, "duration": 1 }, "branch": "b" },
-        { "id": "4a", "name": "Living Bomb", "description": "Places a bomb on the enemy that explodes after 2 turns, dealing 100 damage.", "level_unlocked": 12, "dependencies": ["3a"], "effect": { "type": "delayed_bomb", "damage": 100, "delay": 2 }, "branch": "a" },
-        { "id": "4b", "name": "Arcane Shield", "description": "Creates a magical barrier that absorbs 50 damage.", "level_unlocked": 12, "dependencies": ["3b"], "effect": { "type": "shield", "value": 50 }, "branch": "b" },
-        { "id": "5a", "name": "Meteor Swarm", "description": "Calls down a shower of meteors, dealing 100 area-of-effect damage to all enemies.", "level_unlocked": 15, "dependencies": ["4a"], "effect": { "type": "aoe_damage", "damage": 100 }, "branch": "a" },
-        { "id": "5b", "name": "Blizzard", "description": "A massive ice storm that deals 60 damage to all enemies and has a 70% chance to freeze them for 1 turn.", "level_unlocked": 15, "dependencies": ["4b"], "effect": { "type": "aoe_freeze", "damage": 60, "chance": 0.7, "duration": 1 }, "branch": "b" }
+        {
+          "id": 1,
+          "name": "Fireball",
+          "description": "Deals 30 area-of-effect damage to all enemies.",
+          "level_unlocked": 3,
+          "dependencies": [],
+          "effect": {
+            "type": "aoe_damage",
+            "damage": 30
+          }
+        },
+        {
+          "id": "2a",
+          "name": "Combustion",
+          "description": "Causes the target to burn, taking 10 fire damage per turn for 3 turns.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "burn",
+            "damage": 10,
+            "duration": 3
+          },
+          "branch": "a"
+        },
+        {
+          "id": "2b",
+          "name": "Ice Shard",
+          "description": "A shard of ice with a 50% chance to freeze an enemy for 1 turn.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "freeze",
+            "chance": 0.5,
+            "duration": 1
+          },
+          "branch": "b"
+        },
+        {
+          "id": "3a",
+          "name": "Flame Wall",
+          "description": "Creates a wall of fire that deals 15 damage to all enemies for 3 turns.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2a"
+          ],
+          "effect": {
+            "type": "aoe_dot",
+            "damage": 15,
+            "duration": 3
+          },
+          "branch": "a"
+        },
+        {
+          "id": "3b",
+          "name": "Frost Nova",
+          "description": "A burst of cold that damages all enemies for 20 and has a 30% chance to freeze them.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2b"
+          ],
+          "effect": {
+            "type": "aoe_freeze",
+            "damage": 20,
+            "chance": 0.3,
+            "duration": 1
+          },
+          "branch": "b"
+        },
+        {
+          "id": "4a",
+          "name": "Living Bomb",
+          "description": "Places a bomb on the enemy that explodes after 2 turns, dealing 100 damage.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3a"
+          ],
+          "effect": {
+            "type": "delayed_bomb",
+            "damage": 100,
+            "delay": 2
+          },
+          "branch": "a"
+        },
+        {
+          "id": "4b",
+          "name": "Arcane Shield",
+          "description": "Creates a magical barrier that absorbs 50 damage.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3b"
+          ],
+          "effect": {
+            "type": "shield",
+            "value": 50
+          },
+          "branch": "b"
+        },
+        {
+          "id": "5a",
+          "name": "Meteor Swarm",
+          "description": "Calls down a shower of meteors, dealing 100 area-of-effect damage to all enemies.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4a"
+          ],
+          "effect": {
+            "type": "aoe_damage",
+            "damage": 100
+          },
+          "branch": "a"
+        },
+        {
+          "id": "5b",
+          "name": "Blizzard",
+          "description": "A massive ice storm that deals 60 damage to all enemies and has a 70% chance to freeze them for 1 turn.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4b"
+          ],
+          "effect": {
+            "type": "aoe_freeze",
+            "damage": 60,
+            "chance": 0.7,
+            "duration": 1
+          },
+          "branch": "b"
+        }
       ],
       "ascii_tree": [
         "      (1)      ",
@@ -4432,18 +4897,146 @@
     },
     "Oracle": {
       "description": "A divine healer who channels celestial energy to protect and mend, all while smiting the unholy.",
-      "starting_stats": { "max_hp": 100, "attack_power": 10, "attack_variance": 2, "crit_chance": 0.1, "crit_multiplier": 1.5 },
-      "starting_equipment": [ "heavy iron mace", "gleaming shield" ],
+      "starting_stats": {
+        "max_hp": 100,
+        "attack_power": 10,
+        "attack_variance": 2,
+        "crit_chance": 0.1,
+        "crit_multiplier": 1.5
+      },
+      "starting_equipment": [
+        "heavy iron mace",
+        "gleaming shield"
+      ],
       "skill_tree": [
-        { "id": 1, "name": "Holy Light", "description": "Heals you for 50 HP.", "level_unlocked": 3, "dependencies": [], "effect": { "type": "heal", "value": 50 } },
-        { "id": "2a", "name": "Smite", "description": "A divine strike that deals double damage to undead enemies.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "damage_modifier", "multiplier": 2, "target": "undead" }, "branch": "a" },
-        { "id": "2b", "name": "Greater Heal", "description": "Heals you for 100 HP.", "level_unlocked": 6, "dependencies": [1], "effect": { "type": "heal", "value": 100 }, "branch": "b" },
-        { "id": "3a", "name": "Consecrate", "description": "Deals 20 holy damage per turn for 3 turns to the enemy.", "level_unlocked": 9, "dependencies": ["2a"], "effect": { "type": "dot", "damage": 20, "duration": 3 }, "branch": "a" },
-        { "id": "3b", "name": "Circle of Healing", "description": "Heals you for 25 HP per turn for 3 turns.", "level_unlocked": 9, "dependencies": ["2b"], "effect": { "type": "hot", "heal": 25, "duration": 3 }, "branch": "b" },
-        { "id": "4a", "name": "Divine Storm", "description": "Calls down a storm of holy energy, dealing 80 damage.", "level_unlocked": 12, "dependencies": ["3a"], "effect": { "type": "single_target_damage", "damage": 80 }, "branch": "a" },
-        { "id": "4b", "name": "Blessing of Sanctuary", "description": "Increases your defense by 15 for 5 turns.", "level_unlocked": 12, "dependencies": ["3b"], "effect": { "type": "stat_buff", "stat": "defense", "value": 15, "duration": 5 }, "branch": "b" },
-        { "id": "5a", "name": "Judgment", "description": "A powerful strike with a 20% chance to execute non-boss enemies below 30% health.", "level_unlocked": 15, "dependencies": ["4a"], "effect": { "type": "execute", "chance": 0.2, "health_threshold": 0.3 }, "branch": "a" },
-        { "id": "5b", "name": "Divine Intervention", "description": "Fully heals you and removes all negative status effects.", "level_unlocked": 15, "dependencies": ["4b"], "effect": { "type": "full_heal_and_dispel" }, "branch": "b" }
+        {
+          "id": 1,
+          "name": "Holy Light",
+          "description": "Heals you for 50 HP.",
+          "level_unlocked": 3,
+          "dependencies": [],
+          "effect": {
+            "type": "heal",
+            "value": 50
+          }
+        },
+        {
+          "id": "2a",
+          "name": "Smite",
+          "description": "A divine strike that deals double damage to undead enemies.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "damage_modifier",
+            "multiplier": 2,
+            "target": "undead"
+          },
+          "branch": "a"
+        },
+        {
+          "id": "2b",
+          "name": "Greater Heal",
+          "description": "Heals you for 100 HP.",
+          "level_unlocked": 6,
+          "dependencies": [
+            1
+          ],
+          "effect": {
+            "type": "heal",
+            "value": 100
+          },
+          "branch": "b"
+        },
+        {
+          "id": "3a",
+          "name": "Consecrate",
+          "description": "Deals 20 holy damage per turn for 3 turns to the enemy.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2a"
+          ],
+          "effect": {
+            "type": "dot",
+            "damage": 20,
+            "duration": 3
+          },
+          "branch": "a"
+        },
+        {
+          "id": "3b",
+          "name": "Circle of Healing",
+          "description": "Heals you for 25 HP per turn for 3 turns.",
+          "level_unlocked": 9,
+          "dependencies": [
+            "2b"
+          ],
+          "effect": {
+            "type": "hot",
+            "heal": 25,
+            "duration": 3
+          },
+          "branch": "b"
+        },
+        {
+          "id": "4a",
+          "name": "Divine Storm",
+          "description": "Calls down a storm of holy energy, dealing 80 damage.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3a"
+          ],
+          "effect": {
+            "type": "single_target_damage",
+            "damage": 80
+          },
+          "branch": "a"
+        },
+        {
+          "id": "4b",
+          "name": "Blessing of Sanctuary",
+          "description": "Increases your defense by 15 for 5 turns.",
+          "level_unlocked": 12,
+          "dependencies": [
+            "3b"
+          ],
+          "effect": {
+            "type": "stat_buff",
+            "stat": "defense",
+            "value": 15,
+            "duration": 5
+          },
+          "branch": "b"
+        },
+        {
+          "id": "5a",
+          "name": "Judgment",
+          "description": "A powerful strike with a 20% chance to execute non-boss enemies below 30% health.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4a"
+          ],
+          "effect": {
+            "type": "execute",
+            "chance": 0.2,
+            "health_threshold": 0.3
+          },
+          "branch": "a"
+        },
+        {
+          "id": "5b",
+          "name": "Divine Intervention",
+          "description": "Fully heals you and removes all negative status effects.",
+          "level_unlocked": 15,
+          "dependencies": [
+            "4b"
+          ],
+          "effect": {
+            "type": "full_heal_and_dispel"
+          },
+          "branch": "b"
+        }
       ],
       "ascii_tree": [
         "      (1)      ",
@@ -4475,16 +5068,28 @@
     {
       "name": "Iron Sword",
       "ingredients": [
-        {"name": "Iron Ore", "quantity": 2},
-        {"name": "Monster Fang", "quantity": 1}
+        {
+          "name": "Iron Ore",
+          "quantity": 2
+        },
+        {
+          "name": "Monster Fang",
+          "quantity": 1
+        }
       ],
       "result": "steel sword"
     },
     {
       "name": "Healing Potion",
       "ingredients": [
-        {"name": "Ectoplasm", "quantity": 1},
-        {"name": "Monster Fang", "quantity": 1}
+        {
+          "name": "Ectoplasm",
+          "quantity": 1
+        },
+        {
+          "name": "Monster Fang",
+          "quantity": 1
+        }
       ],
       "result": "healing potion"
     }
@@ -4525,16 +5130,122 @@
     {
       "name": "Large Healing Potion",
       "ingredients": [
-        {"name": "healing potion", "quantity": 2}
+        {
+          "name": "healing potion",
+          "quantity": 2
+        }
       ],
       "result": "large healing potion"
     },
     {
       "name": "Super Healing Potion",
       "ingredients": [
-        {"name": "large healing potion", "quantity": 2}
+        {
+          "name": "large healing potion",
+          "quantity": 2
+        }
       ],
       "result": "super healing potion"
+    },
+    {
+      "name": "Shadow-Woven Aegis",
+      "ingredients": [
+        {
+          "name": "shimmering cloak",
+          "quantity": 1
+        },
+        {
+          "name": "vial of liquid shadow",
+          "quantity": 1
+        }
+      ],
+      "result": "Shadow-Woven Aegis"
+    },
+    {
+      "name": "Bulwark of the Ancients",
+      "ingredients": [
+        {
+          "name": "set of rusted plate armor",
+          "quantity": 1
+        },
+        {
+          "name": "iron shield",
+          "quantity": 1
+        },
+        {
+          "name": "strange-looking gem",
+          "quantity": 1
+        }
+      ],
+      "result": "Bulwark of the Ancients"
+    },
+    {
+      "name": "Soul-Stealers Scythe",
+      "ingredients": [
+        {
+          "name": "battle-worn axe",
+          "quantity": 1
+        },
+        {
+          "name": "cursed idol",
+          "quantity": 1
+        }
+      ],
+      "result": "Soul-Stealers Scythe"
+    },
+    {
+      "name": "Stormcallers Staff",
+      "ingredients": [
+        {
+          "name": "enchanted staff",
+          "quantity": 1
+        },
+        {
+          "name": "mysterious orb",
+          "quantity": 1
+        },
+        {
+          "name": "ancient staff",
+          "quantity": 1
+        }
+      ],
+      "result": "Stormcallers Staff"
+    },
+    {
+      "name": "Amulet of Swiftness",
+      "ingredients": [
+        {
+          "name": "Monster Fang",
+          "quantity": 1
+        },
+        {
+          "name": "Ectoplasm",
+          "quantity": 1
+        },
+        {
+          "name": "hooded cloak",
+          "quantity": 1
+        }
+      ],
+      "result": "Amulet of Swiftness"
+    },
+    {
+      "name": "Gem of True Sight",
+      "ingredients": [
+        {
+          "name": "petrified eyeball",
+          "quantity": 1
+        },
+        {
+          "name": "strange-looking gem",
+          "quantity": 1
+        },
+        {
+          "name": "flawless diamond",
+          "quantity": 1
+        }
+      ],
+      "result": "Gem of True Sight"
     }
   ]
 }
