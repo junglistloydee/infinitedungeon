@@ -322,49 +322,39 @@ def calculate_xp_for_next_level(current_level):
     """Calculates the XP required for the next level."""
     return int(BASE_XP_TO_LEVEL_UP * (XP_SCALE_FACTOR ** (current_level - 1)))
 
-def level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points):
-    """Applies level-up bonuses to player stats."""
-    player_level += 1
+def level_up_player(player):
+    """Applies level-up bonuses to the player object."""
+    player.level += 1
     skill_point_gained = False
-    if player_level % 3 == 0 and player_level <= 15:
-        player_skill_points += 1
+    if player.level % 3 == 0 and player.level <= 15:
+        player.skill_points += 1
         skill_point_gained = True
 
-    old_max_hp = max_hp
-    max_hp += HP_GAIN_PER_LEVEL
-    player_hp = max_hp
+    old_max_hp = player.max_hp
+    player.max_hp += HP_GAIN_PER_LEVEL
+    player.hp = player.max_hp
 
-    player_attack_power += ATTACK_GAIN_PER_LEVEL
-
-    # Corrected critical hit chance increase on level-up
-    player_crit_chance = min(1.0, player_crit_chance + CRIT_CHANCE_GAIN_PER_LEVEL)
-    # The multiplier is a constant, so it's not increased by level-up
-    # player_crit_multiplier = BASE_PLAYER_CRIT_MULTIPLIER # This should stay constant or be based on items
+    player.attack_power += ATTACK_GAIN_PER_LEVEL
+    player.crit_chance = min(1.0, player.crit_chance + CRIT_CHANCE_GAIN_PER_LEVEL)
 
     print("\n" + "#" * 50)
-    print(f"      CONGRATULATIONS! YOU REACHED LEVEL {player_level}!              ")
+    print(f"      CONGRATULATIONS! YOU REACHED LEVEL {player.level}!              ")
     print("#" * 50)
-    print(f"Your Max HP increased from {old_max_hp} to {max_hp}!")
-    print(f"Your Attack Power increased to {player_attack_power}!")
-    print(f"Your Critical Chance increased to {player_crit_chance*100:.0f}%!")
+    print(f"Your Max HP increased from {old_max_hp} to {player.max_hp}!")
+    print(f"Your Attack Power increased to {player.attack_power}!")
+    print(f"Your Critical Chance increased to {player.crit_chance*100:.0f}%!")
     if skill_point_gained:
-        print(f"You have gained a skill point! You now have {player_skill_points} skill point(s).")
+        print(f"You have gained a skill point! You now have {player.skill_points} skill point(s).")
     print(f"You feel fully revitalized!")
     print("#" * 50)
 
-    return player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
 
-def check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points):
+def check_for_level_up(player):
     """Checks if the player has enough XP to level up and calls level_up_player."""
-    while player_xp >= xp_to_next_level:
-        player_xp -= xp_to_next_level
-
-        player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
-            level_up_player(player_hp, max_hp, player_level, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
-
-        xp_to_next_level = calculate_xp_for_next_level(player_level)
-
-    return player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points
+    while player.xp >= player.xp_to_next_level:
+        player.xp -= player.xp_to_next_level
+        level_up_player(player)
+        player.xp_to_next_level = calculate_xp_for_next_level(player.level)
 
 
 def handle_skill_tree(player_class, player_level, player_skill_points, player_unlocked_skills):
@@ -473,13 +463,13 @@ def handle_skill_tree(player_class, player_level, player_skill_points, player_un
     return player_skill_points, player_unlocked_skills
 
 
-def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=False):
+def process_item_use(player, item_to_use, in_combat=False):
     """
-    Processes the effect of using a consumable item.
-    Returns updated player_hp, updated max_hp (if changed by item), updated current_max_inventory_slots, a boolean indicating if a turn was consumed, and a dictionary of stat changes.
+    Processes the effect of using a consumable item by modifying the player object.
+    Returns a tuple of (action_consumed_turn, stat_changes).
     """
     action_consumed_turn = False
-    stat_changes = {}
+    stat_changes = {} # For combat-specific effects like inflicting status on monsters
 
     item_type = item_to_use.get('type')
 
@@ -489,29 +479,29 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
 
         if effect_type == 'heal' and isinstance(effect_value, int):
             healing_amount = effect_value
-            player_hp_before_heal = player_hp
-            player_hp = min(max_hp, player_hp + healing_amount)
-            print(f"You use {add_article(item_to_use['name'])} and restore {player_hp - player_hp_before_heal} HP.")
-            player_inventory.remove(item_to_use)
+            hp_before_heal = player.hp
+            player.hp = min(player.max_hp, player.hp + healing_amount)
+            print(f"You use {add_article(item_to_use['name'])} and restore {player.hp - hp_before_heal} HP.")
+            player.inventory.remove(item_to_use)
             action_consumed_turn = True
         elif effect_type == 'harm' and isinstance(effect_value, int):
-            player_hp -= effect_value
+            player.hp -= effect_value
             print(f"You use {add_article(item_to_use['name'])} and feel terrible! You take {effect_value} damage.")
-            player_inventory.remove(item_to_use)
+            player.inventory.remove(item_to_use)
             action_consumed_turn = True
         elif effect_type == 'wake_up':
             print(f"You sniff {add_article(item_to_use['name'])} and feel invigorated! (This takes your turn.)")
-            player_inventory.remove(item_to_use)
+            player.inventory.remove(item_to_use)
             action_consumed_turn = True
         elif effect_type == 'flavor':
             print(f"You consume {add_article(item_to_use['name'])}. It tastes... unique. (This takes your turn.)")
-            player_inventory.remove(item_to_use)
+            player.inventory.remove(item_to_use)
             action_consumed_turn = True
         elif effect_type == 'perception_boost':
             if not in_combat:
-                stat_changes['perception_boost'] = True
+                # This would need a corresponding effect handling system outside combat
                 print(f"You drink the {item_to_use['name']} and feel your senses sharpen.")
-                player_inventory.remove(item_to_use)
+                player.inventory.remove(item_to_use)
                 action_consumed_turn = True
             else:
                 print("You can't drink this in the heat of combat.")
@@ -519,10 +509,10 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
             if not in_combat:
                 stat_to_boost = effect_value.get('stat')
                 amount = effect_value.get('amount')
-                if stat_to_boost and isinstance(amount, int):
-                    stat_changes[stat_to_boost] = stat_changes.get(stat_to_boost, 0) + amount
+                if stat_to_boost == 'attack_bonus' and isinstance(amount, int):
+                    player.attack_bonus += amount
                     print(f"You consume the {item_to_use['name']} and feel permanently stronger!")
-                    player_inventory.remove(item_to_use)
+                    player.inventory.remove(item_to_use)
                     action_consumed_turn = True
                 else:
                     print("This item seems to have no effect.")
@@ -533,7 +523,7 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
             if effect_to_cure:
                 stat_changes['remove_effect'] = effect_to_cure
                 print(f"You use the {item_to_use['name']}.")
-                player_inventory.remove(item_to_use)
+                player.inventory.remove(item_to_use)
                 action_consumed_turn = True
         elif effect_type == 'inflict':
             if in_combat:
@@ -543,7 +533,7 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
                 if effect_def:
                     stat_changes['add_effect_to_monster'] = copy.deepcopy(effect_def)
                     print(f"You use the {item_to_use['name']}!")
-                    player_inventory.remove(item_to_use)
+                    player.inventory.remove(item_to_use)
                     action_consumed_turn = True
             else:
                 print("You can only use this item in combat.")
@@ -555,21 +545,18 @@ def process_item_use(item_to_use, player_hp, max_hp, player_inventory, current_m
         else:
             slots_added = item_to_use.get('effect_value', 0)
             if slots_added > 0:
-                current_max_inventory_slots += slots_added
+                player.current_max_inventory_slots += slots_added
                 print(f"You use {add_article(item_to_use['name'])} and gain {slots_added} additional inventory slots!")
-                player_inventory.remove(item_to_use)
+                player.inventory.remove(item_to_use)
                 action_consumed_turn = True
             else:
                 print(f"You can't seem to use {add_article(item_to_use['name'])} to expand your inventory.")
-
-    elif in_combat and item_type in ['weapon', 'armor', 'shield', 'key', 'winning_item']:
-        print(f"You can't 'use' {add_article(item_to_use['name'])} during combat. Try 'equip' for gear, or 'unlock' for keys.")
-    elif not in_combat and item_type in ['key', 'weapon', 'armor', 'shield', 'winning_item']:
-        print(f"You can't 'use' {add_article(item_to_use['name'])} directly. Try 'equip' for gear, or 'unlock' for keys.")
+    elif item_type in ['key', 'weapon', 'armor', 'shield', 'winning_item']:
+        print(f"You can't 'use' {add_article(item_to_use['name'])} directly. Try 'equip' for gear or 'unlock' for keys.")
     else:
         print(f"You can't use {add_article(item_to_use['name'])} in that way.")
 
-    return player_hp, max_hp, current_max_inventory_slots, action_consumed_turn, stat_changes
+    return action_consumed_turn, stat_changes
 
 
 def handle_item_effects(effect_type, player_hp, damage, monster_hp, equipped_items):
@@ -596,7 +583,7 @@ def handle_item_effects(effect_type, player_hp, damage, monster_hp, equipped_ite
                     monster_hp -= reflect_damage
                     print(f"Your {item['name']} reflects {reflect_damage} damage back at the enemy!")
     return player_hp, damage, monster_hp
-def display_room_content_summary(current_room, rooms_travelled, direction_history=None, seed=None):
+def display_room_content_summary(player, world, rooms_travelled, seed=None):
     """
     Displays the room description and then any relevant hints or status information.
     """
@@ -606,20 +593,39 @@ def display_room_content_summary(current_room, rooms_travelled, direction_histor
     separator_length = (40 - len(status_text)) // 2
     print("=" * separator_length + status_text + "=" * (40 - separator_length - len(status_text)))
 
-    current_room.show_description()
+    current_room = world.current_dungeon.get_room_at(player.x, player.y)
+    if not current_room: # Should not happen if player is moved correctly
+        print("You are in a dark corridor.")
+    else:
+        current_room.show_description()
 
-    if current_room.npc and not current_room.npc.get('talked_to', False):
-        print("    Hint: Try typing 'talk'")
-    if current_room.puzzle and not current_room.puzzle.get('solved', True):
-        puzzle_type = current_room.puzzle['type']
-        if puzzle_type == 'riddle':
-            print("    Hint: Answering the riddle might reveal the way. Try 'answer [your guess]'")
-        elif puzzle_type == 'mechanism':
-            print("    Hint: You might need to 'pull' a lever here. Try 'pull [lever color/material]'")
-        elif puzzle_type == 'pressure_plate':
-            print("    Hint: A pressure plate on the floor looks like it needs something pressed on it. Try 'press'")
-        elif puzzle_type == 'item_delivery':
-            print("    Hint: Look for a way to 'give' something to the object. Try 'give [item] to [object]'")
+    # Dynamically find and display exits based on the grid
+    exits = []
+    dungeon = world.current_dungeon
+    x, y = player.x, player.y
+    if y > 0 and dungeon.grid[y - 1][x] == '.': exits.append('north')
+    if y < dungeon.height - 1 and dungeon.grid[y + 1][x] == '.': exits.append('south')
+    if x < dungeon.width - 1 and dungeon.grid[y][x + 1] == '.': exits.append('east')
+    if x > 0 and dungeon.grid[y][x - 1] == '.': exits.append('west')
+
+    if exits:
+        print(f"Exits: {', '.join(exits)}")
+    else:
+        print("There are no apparent exits from here.")
+
+    if current_room:
+        if current_room.npc and not current_room.npc.get('talked_to', False):
+            print("    Hint: Try typing 'talk'")
+        if current_room.puzzle and not current_room.puzzle.get('solved', True):
+            puzzle_type = current_room.puzzle['type']
+            if puzzle_type == 'riddle':
+                print("    Hint: Answering the riddle might reveal the way. Try 'answer [your guess]'")
+            elif puzzle_type == 'mechanism':
+                print("    Hint: You might need to 'pull' a lever here. Try 'pull [lever color/material]'")
+            elif puzzle_type == 'pressure_plate':
+                print("    Hint: A pressure plate on the floor looks like it needs something pressed on it. Try 'press'")
+            elif puzzle_type == 'item_delivery':
+                print("    Hint: Look for a way to 'give' something to the object. Try 'give [item] to [object]'")
 
     print("=" * 40)
 
@@ -995,8 +1001,7 @@ def handle_combat(player, monster_data, current_room, sound_manager):
                                     if q_data['current_count'] >= quest_def['target_count']:
                                         print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
 
-                    player.xp, player.level, player.xp_to_next_level, player.hp, player.max_hp, player.attack_power, player.attack_variance, player.crit_chance, player.crit_multiplier, player.skill_points = \
-                        check_for_level_up(player.xp, player.level, player.xp_to_next_level, player.hp, player.max_hp, player.attack_power, player.attack_variance, player.crit_chance, player.crit_multiplier, player.skill_points)
+                    check_for_level_up(player)
 
                     current_room.monster = None
                     break
@@ -1145,8 +1150,7 @@ def handle_combat(player, monster_data, current_room, sound_manager):
                                     if q_data['current_count'] >= quest_def['target_count']:
                                         print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
 
-                    player.xp, player.level, player.xp_to_next_level, player.hp, player.max_hp, player.attack_power, player.attack_variance, player.crit_chance, player.crit_multiplier, player.skill_points = \
-                        check_for_level_up(player.xp, player.level, player.xp_to_next_level, player.hp, player.max_hp, player.attack_power, player.attack_variance, player.crit_chance, player.crit_multiplier, player.skill_points)
+                    check_for_level_up(player)
 
                     current_room.monster = None
                     break
@@ -1164,14 +1168,13 @@ def handle_combat(player, monster_data, current_room, sound_manager):
 
                 if best_healing_item:
                     original_player_hp = player.hp
-                    player.hp, player.max_hp, player.current_max_inventory_slots, consumed_turn, _ = process_item_use(best_healing_item, player.hp, player.max_hp, player.inventory, player.current_max_inventory_slots, in_combat=True)
-                    action_taken = consumed_turn
+                    action_taken, _ = process_item_use(player, best_healing_item, in_combat=True)
 
                     if player.hp <= 0:
                         print(f"You succumb to the effects of {add_article(best_healing_item['name'])}...")
                         break
 
-                    if consumed_turn and player.hp != original_player_hp:
+                    if action_taken and player.hp != original_player_hp:
                         print(f"Your health is now {player.hp}/{player.max_hp} HP.")
 
                 else:
@@ -1201,8 +1204,8 @@ def handle_combat(player, monster_data, current_room, sound_manager):
 
                 if item_found_in_inventory:
                     original_player_hp = player.hp
-                    player.hp, player.max_hp, player.current_max_inventory_slots, consumed_turn, stat_changes = process_item_use(item_found_in_inventory, player.hp, player.max_hp, player.inventory, player.current_max_inventory_slots, in_combat=True)
-                    action_taken = consumed_turn
+                    action_taken, stat_changes = process_item_use(player, item_found_in_inventory, in_combat=True)
+
                     if 'remove_effect' in stat_changes:
                         effect_to_remove = stat_changes['remove_effect']
                         player_status_effects = [effect for effect in player_status_effects if effect['name'] != effect_to_remove]
@@ -1216,7 +1219,7 @@ def handle_combat(player, monster_data, current_room, sound_manager):
                         print(f"You succumb to the effects of {add_article(item_found_in_inventory['name'])}...")
                         break
 
-                    if consumed_turn and player.hp != original_player_hp:
+                    if action_taken and player.hp != original_player_hp:
                         print(f"Your health is now {player.hp}/{player.max_hp} HP.")
 
                 else:
@@ -1353,7 +1356,7 @@ def handle_gambler(player_gold, gambler_data):
 
     return player_gold
 
-def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, equipped_helmet, player_class, player_unlocked_skills, player_skill_points):
+def handle_horde_combat(player, current_room, sound_manager):
     horde_data = current_room.horde_data
     horde_name = horde_data['name']
     horde_monsters = horde_data['monsters']
@@ -1374,18 +1377,17 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
         monster_data = dict(monster_def)
         print(f"\n--- Horde Battle ({i+1}/{horde_size}) ---")
 
-        player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, \
-        player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
-            handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, \
-                          monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, \
-                          player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, 0, 0, equipped_helmet, player_class, player_unlocked_skills, player_skill_points)
+        game_status = handle_combat(player, monster_data, current_room, sound_manager)
 
-        if player_hp <= 0:
-            return 'lose', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde, player_skill_points
+        if game_status == 'lose':
+            return 'lose', monsters_defeated_in_horde
 
-        if monster_data is None:
+        if current_room.monster is None: # Monster was defeated
             monsters_defeated_in_horde += 1
-        total_gold_gained += gold_gained
+
+        # Gold and XP are added directly to player object in handle_combat now
+        # We just track the total for the final message
+        total_gold_gained += random.randint(monster_def.get('gold_drop', [0,0])[0], monster_def.get('gold_drop', [0,0])[1])
         total_xp_gained += monster_def.get('xp_reward', 0)
 
     print(f"\n--- Horde Defeated! ---")
@@ -1393,26 +1395,64 @@ def handle_horde_combat(player_hp, max_hp, player_attack_power, player_attack_bo
     print(f"Total Gold Gained: {total_gold_gained}")
     print(f"Total XP Gained: {total_xp_gained}")
 
-    player_gold += total_gold_gained
-    player_xp += total_xp_gained
-
-    player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
-        check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
+    check_for_level_up(player)
 
     # Special reward for defeating the horde
     if random.random() < 0.5: # 50% chance of a special item
         item_def = get_item_by_name(random.choice([item['name'] for item in ALL_ITEMS if item.get('type') not in ['winning_item', 'key']]))
         if item_def:
-            if len(player_inventory) < current_max_inventory_slots:
-                scaled_item = scale_item_for_player_level(item_def, player_level)
-                player_inventory.append(scaled_item)
+            if len(player.inventory) < player.current_max_inventory_slots:
+                scaled_item = scale_item_for_player_level(item_def, player.level)
+                player.inventory.append(scaled_item)
                 print(f"You found a special item: {add_article(scaled_item['name'])}!")
             else:
                 print("You would have received a special item, but your inventory is full!")
 
-    return 'continue', player_hp, max_hp, player_gold, player_xp, player_level, xp_to_next_level, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, monsters_defeated_in_horde, player_skill_points
+    return 'win', monsters_defeated_in_horde
 
 # MODIFIED: Added equipped_cloak and equipped_misc_items to parameters
+def handle_combine(player, item_name_to_combine):
+    """Handles the item combination logic."""
+    recipe = next((r for r in COMBINATION_RECIPES if r['result'].lower() == item_name_to_combine.lower()), None)
+
+    if not recipe:
+        print(f"You don't know how to combine a '{item_name_to_combine}'.")
+        return
+
+    player_inventory_names = [item['name'].lower() for item in player.inventory]
+    required_ingredients = [ing.lower() for ing in recipe['ingredients']]
+
+    temp_inventory = list(player_inventory_names)
+    has_all_ingredients = True
+    for ingredient in required_ingredients:
+        if ingredient in temp_inventory:
+            temp_inventory.remove(ingredient)
+        else:
+            has_all_ingredients = False
+            break
+
+    if not has_all_ingredients:
+        print(f"You don't have the necessary ingredients to combine a {recipe['result']}.")
+        print(f"You need: {', '.join(recipe['ingredients'])}")
+        return
+
+    if len(player.inventory) - len(required_ingredients) + 1 > player.current_max_inventory_slots:
+        print("You don't have enough inventory space to combine this item.")
+        return
+
+    for ingredient_name in recipe['ingredients']:
+        for i, item in enumerate(player.inventory):
+            if item['name'].lower() == ingredient_name.lower():
+                player.inventory.pop(i)
+                break
+
+    result_item_def = get_item_by_name(recipe['result'].lower())
+    if result_item_def:
+        player.inventory.append(copy.deepcopy(result_item_def))
+        print(f"You successfully combined a {recipe['result']}!")
+    else:
+        print("Something went wrong, the resulting item could not be created.")
+
 def handle_shop(player, vendor_data, sound_manager):
     """
     Manages the shop interaction with a vendor NPC.
@@ -1838,8 +1878,7 @@ def interact_with_quest_giver(npc, player, sound_manager):
                         amount = quest_def['rewards']['reputation_loss']['amount']
                         update_reputation(player.reputation, faction_id, -amount)
 
-                player.xp, player.level, player.xp_to_next_level, player.hp, player.max_hp, player.attack_power, player.attack_variance, player.crit_chance, player.crit_multiplier, player.skill_points = \
-                    check_for_level_up(player.xp, player.level, player.xp_to_next_level, player.hp, player.max_hp, player.attack_power, player.attack_variance, player.crit_chance, player.crit_multiplier, player.skill_points)
+                check_for_level_up(player)
     elif quest_status == 'completed' and quest_def:
         print(f"{npc['name']}: '{quest_def.get('dialogue_complete_turn_in', 'Thank you for your help.')}'")
 
@@ -1919,6 +1958,11 @@ def load_game():
             world.dungeons[(x, y)] = dungeon
 
         world.current_dungeon = world.dungeons.get((player.world_x, player.world_y))
+        if not world.current_dungeon and world.dungeons:
+            # Fallback if the player's saved coordinates don't match any dungeon
+            world.current_dungeon = list(world.dungeons.values())[0]
+            player.world_x, player.world_y = list(world.dungeons.keys())[0]
+            print("Warning: Player was in an invalid dungeon, moved to the first available one.")
 
         print("\nGame loaded successfully!")
         return player, world
@@ -2042,15 +2086,48 @@ class World:
         self.player.world_x = new_world_x
         self.player.world_y = new_world_y
 
-        # Adjust player's local coordinates for seamless transition
-        if dy == -1: # Moved North
-            self.player.y = self.current_dungeon.height - 1
-        elif dy == 1: # Moved South
-            self.player.y = 0
-        elif dx == -1: # Moved West
-            self.player.x = self.current_dungeon.width - 1
-        elif dx == 1: # Moved East
-            self.player.x = 0
+        # Position player at the start of the new dungeon
+        if self.current_dungeon.start_pos:
+            self.player.x, self.player.y = self.current_dungeon.start_pos
+        else:
+            # A more robust fallback
+            self.player.x, self.player.y = self.current_dungeon.width // 2, self.current_dungeon.height // 2
+
+class Room:
+    """Represents a single room in the dungeon."""
+    def __init__(self, x, y, width, height, description=""):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.description = description
+        self.exits = {}
+        self.locked_exits = {}
+        self.item = None
+        self.npc = None
+        self.hazard = None
+        self.monster = None
+        self.puzzle = None
+        self.shrine = None
+        self.crafting_station = None
+        self.is_start = False
+
+    def show_description(self):
+        """Prints the full description of the room."""
+        print(self.description)
+        if self.item:
+            print(f"You see {add_article(self.item['name'])} on the floor.")
+        if self.npc:
+            npc_description = self.npc.get('description', 'stands silently.')
+            print(f"You spot {self.npc['name']}: {npc_description}")
+        if self.shrine:
+            print(f"Here, you find a {self.shrine['name']}. {self.shrine['description']}")
+        if self.puzzle and not self.puzzle.get('solved', True):
+            print(f"A puzzle here demands your attention: {self.puzzle['description']}")
+        if self.hazard and not self.hazard.get('disarmed', False):
+            print(f"Watch out! There's {self.hazard['name']} here!")
+        if self.monster:
+            print(f"A {self.monster['name']} {self.monster['description']}")
 
 class Dungeon:
     """Represents a single level of the dungeon, containing a grid of rooms."""
@@ -2297,153 +2374,7 @@ class Dungeon:
                 return room
         return None
 
-class Room:
-    """Represents a single room in the dungeon."""
-    def __init__(self, x, y, width, height, description=""):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.description = description
-        self.exits = {}
-        self.locked_exits = {}
-        self.item = None
-        self.npc = None
-        self.hazard = None
-        self.monster = None
-        self.puzzle = None
-        self.shrine = None
-        self.crafting_station = None
-        self.is_start = False
 
-    def show_description(self):
-        """Prints the full description of the room."""
-        print(self.description)
-        if self.item:
-            print(f"You see {add_article(self.item['name'])} on the floor.")
-        if self.npc:
-            npc_description = self.npc.get('description', 'stands silently.')
-            print(f"You spot {self.npc['name']}: {npc_description}")
-        if self.shrine:
-            print(f"Here, you find a {self.shrine['name']}. {self.shrine['description']}")
-        if self.puzzle and not self.puzzle.get('solved', True):
-            print(f"A puzzle here demands your attention: {self.puzzle['description']}")
-        if self.hazard and not self.hazard.get('disarmed', False):
-            print(f"Watch out! There's {self.hazard['name']} here!")
-        if self.monster:
-            print(f"A {self.monster['name']} {self.monster['description']}")
-
-        exits_available = list(self.exits.keys())
-        if exits_available:
-            print(f"Exits: {', '.join(exits_available)}")
-        else:
-            print("There are no apparent exits from this room.")
-
-def display_map(room_history, direction_history, current_room):
-    """Generates and displays an ASCII map of the visited rooms."""
-    # A mapping of room features to characters for the map
-    map_legend = {
-        'inn': 'I',
-        'vendor': 'V',
-        'puzzle': '?',
-        'shrine': '!',
-        'horde': 'H',
-        'crafting': 'C',
-        'boss': 'B',
-        'start': 'S',
-        'default': '·'
-    }
-
-    # Determine coordinates of all visited rooms
-    coords = {}
-    x, y = 0, 0
-    # The full room history for map display should include the current room
-    full_room_history = room_history + [current_room]
-    coords[(x, y)] = full_room_history[0]
-
-    path = [(x, y)]
-    for i, direction in enumerate(direction_history):
-        if direction == 'north':
-            y -= 1
-        elif direction == 'south':
-            y += 1
-        elif direction == 'east':
-            x += 1
-        elif direction == 'west':
-            x -= 1
-        if (i + 1) < len(full_room_history):
-            coords[(x, y)] = full_room_history[i+1]
-            path.append((x, y))
-
-    player_x, player_y = x, y
-
-    if not path:
-        min_x, max_x, min_y, max_y = 0, 0, 0, 0
-    else:
-        min_x = min(p[0] for p in path)
-        max_x = max(p[0] for p in path)
-        min_y = min(p[1] for p in path)
-        max_y = max(p[1] for p in path)
-
-    width = (max_x - min_x + 1) * 2
-    height = (max_y - min_y + 1) * 2
-    grid = [[' ' for _ in range(width)] for _ in range(height)]
-
-    # Draw connections and rooms
-    for i in range(len(path)):
-        room_x, room_y = path[i]
-        grid_y = (room_y - min_y) * 2
-        grid_x = (room_x - min_x) * 2
-
-        room_obj = coords.get((room_x, room_y))
-        icon = map_legend['default']
-        if room_obj:
-            if getattr(room_obj, 'is_inn', False):
-                icon = map_legend['inn']
-            elif room_obj.npc and room_obj.npc.get('type') == 'vendor':
-                icon = map_legend['vendor']
-            elif room_obj.puzzle and not room_obj.puzzle.get('solved', True):
-                icon = map_legend['puzzle']
-            elif room_obj.shrine:
-                icon = map_legend['shrine']
-            elif room_obj.horde_data:
-                icon = map_legend['horde']
-            elif hasattr(room_obj, 'crafting_station'):
-                icon = map_legend['crafting']
-            elif room_obj.monster and room_obj.monster.get('is_boss_guardian', False):
-                icon = map_legend['boss']
-
-        if i == 0:
-            icon = map_legend['start']
-
-        grid[grid_y][grid_x] = icon
-
-        if i < len(path) - 1:
-            next_room_x, next_room_y = path[i+1]
-            if next_room_x > room_x:
-                grid[grid_y][grid_x + 1] = '-'
-            elif next_room_x < room_x:
-                grid[grid_y][grid_x - 1] = '-'
-            elif next_room_y > room_y:
-                grid[grid_y + 1][grid_x] = '|'
-            elif next_room_y < room_y:
-                grid[grid_y - 1][grid_x] = '|'
-
-    grid_player_y = (player_y - min_y) * 2
-    grid_player_x = (player_x - min_x) * 2
-    grid[grid_player_y][grid_player_x] = '@'
-
-    print("\n--- Dungeon Map ---")
-    for row in grid:
-        print("".join(row))
-    print("-------------------")
-    print("--- Legend ---")
-    print("@: You      S: Start")
-    print("I: Inn      V: Vendor")
-    print("?: Puzzle   !: Shrine")
-    print("H: Horde    C: Crafting")
-    print("B: Boss     ·: Explored")
-    print("--------------\n")
 
 
 def game_loop(player, world, sound_manager, seed=None):
@@ -2487,28 +2418,27 @@ def game_loop(player, world, sound_manager, seed=None):
         current_dungeon = world.current_dungeon
         current_room = current_dungeon.get_room_at(player.x, player.y)
 
-        if not current_room:
-            print("You are lost in the void... returning to the start of this level.")
-            player.x, player.y = current_dungeon.start_pos if current_dungeon.start_pos else (2, 2)
-            continue
+        display_room_content_summary(player, world, rooms_travelled, seed)
 
-        display_room_content_summary(current_room, rooms_travelled, direction_history, seed)
+        current_room = current_dungeon.get_room_at(player.x, player.y)
 
-        if current_room.hazard and not current_room.hazard.get('disarmed', False):
-            hazard = current_room.hazard
-            print(f"You encountered a {hazard['name']}!")
-            player.hp -= hazard['damage']
-            print(f"You take {hazard['damage']} damage.")
-            current_room.hazard['disarmed'] = True # One-time damage
-            if player.hp <= 0:
-                return 'lose', monsters_defeated_this_run, rooms_travelled
+        if current_room:
+            if current_room.hazard and not current_room.hazard.get('disarmed', False):
+                hazard = current_room.hazard
+                print(f"You encountered a {hazard['name']}!")
+                player.hp -= hazard['damage']
+                print(f"You take {hazard['damage']} damage.")
+                current_room.hazard['disarmed'] = True
+                if player.hp <= 0:
+                    return 'lose', monsters_defeated_this_run, rooms_travelled
 
-        if current_room.monster:
-            combat_result = handle_combat(player, current_room.monster, current_room, sound_manager)
-            if combat_result == 'lose':
-                return 'lose', monsters_defeated_this_run, rooms_travelled
-            elif combat_result == 'win':
-                monsters_defeated_this_run += 1
+            if current_room.monster:
+                game_status = handle_combat(player, current_room.monster, current_room, sound_manager)
+                if game_status == 'lose':
+                    print("\nYou have been defeated. Game over.")
+                    return 'lose', monsters_defeated_this_run, rooms_travelled
+                elif game_status == 'win':
+                    monsters_defeated_this_run += 1
                 # The monster is set to None inside handle_combat upon defeat
             # 'run' also handled inside handle_combat
 
@@ -2525,9 +2455,11 @@ def game_loop(player, world, sound_manager, seed=None):
         elif verb == "help":
             print("\nAvailable commands:")
             print("    go [direction]      - Move (e.g., 'go north').")
+            print("    [n, s, e, w]        - Move directly (e.g., 'n' for north).")
             print("    get [item]          - Pick up an item from the floor.")
             print("    drop [item]         - Drop an item from your inventory.")
             print("    inv / inventory     - Display your inventory and stats.")
+            print("    equipped            - View your currently equipped items.")
             print("    look                - Re-examine the room.")
             print("    use [item]          - Use a consumable item.")
             print("    equip [item]        - Equip a weapon, shield, or armor.")
@@ -2543,19 +2475,57 @@ def game_loop(player, world, sound_manager, seed=None):
             print("    save                - Save your game.")
             print("    quit                - Exit the game.")
             continue
+        elif verb == "equipped":
+            print("\n--- Equipped Items ---")
+            if player.equipped_weapon:
+                print(f"Weapon: {player.equipped_weapon['name']}")
+            if player.equipped_shield:
+                print(f"Shield: {player.equipped_shield['name']}")
+            if player.equipped_armor:
+                print(f"Armor: {player.equipped_armor['name']}")
+            if player.equipped_cloak:
+                print(f"Cloak: {player.equipped_cloak['name']}")
+            if player.equipped_helmet:
+                print(f"Helmet: {player.equipped_helmet['name']}")
+            if player.equipped_misc_items:
+                print("Misc Items:")
+                for item in player.equipped_misc_items:
+                    print(f"  - {item['name']}")
+            print("----------------------")
+            continue
         elif verb == "look":
             continue # The loop will reprint the description automatically
         elif verb.startswith("inv"):
             display_inventory_and_stats(player)
             continue
         elif verb == "map":
-            # display_map is not compatible with the new world structure yet.
-            # This is a placeholder to avoid crashing.
-            print("The map is currently unavailable.")
+            display_map(player, world)
             continue
         elif verb == "credits":
-             print(CREDITS_TEXT)
-             continue
+            print(CREDITS_TEXT)
+            continue
+        elif verb == "ohinn":
+            print("A magical sign for an inn appears before you.")
+            handle_inn(player, sound_manager)
+            continue
+        elif verb == "credits":
+            print(CREDITS_TEXT)
+            continue
+        elif verb == "ohinn":
+            print("A magical sign for an inn appears before you.")
+            handle_inn(player, sound_manager)
+            continue
+        elif verb == "attack":
+            if current_room and current_room.monster:
+                print(f"You ready yourself for battle against the {current_room.monster['name']}!")
+                combat_result = handle_combat(player, current_room.monster, current_room, sound_manager)
+                if combat_result == 'lose':
+                    return 'lose', monsters_defeated_this_run, rooms_travelled
+                elif combat_result == 'win':
+                    monsters_defeated_this_run += 1
+            else:
+                print("There is nothing to attack here.")
+            continue
         elif verb == "quests":
             if not player.quests:
                 print("You have no active quests.")
@@ -2573,35 +2543,53 @@ def game_loop(player, world, sound_manager, seed=None):
             player.skill_points, player.unlocked_skills = handle_skill_tree(player.character_class, player.level, player.skill_points, player.unlocked_skills)
             continue
 
-        # --- Movement ---
-        elif verb in ["go", "north", "south", "east", "west"]:
-            direction = verb if verb != "go" else (parts[1] if len(parts) > 1 else "")
-            if not direction:
-                print("Go where?")
-                continue
-
-            if direction in current_room.exits:
-                dx, dy = 0, 0
-                if direction == 'north': dy = -1
-                elif direction == 'south': dy = 1
-                elif direction == 'east': dx = 1
-                elif direction == 'west': dx = -1
-
-                new_x, new_y = player.x + dx, player.y + dy
-
-                # Check for world boundary transition
-                if not (0 <= new_y < current_dungeon.height and 0 <= new_x < current_dungeon.width):
-                    print(f"You've reached the edge of this dungeon area and travel {direction}...")
-                    world.move_player(dx, dy)
-                else:
-                    player.x, player.y = new_x, new_y
-
-                rooms_travelled += 1
-                direction_history.append(direction) # For map
-            elif direction in current_room.locked_exits:
-                print(f"The way {direction} is locked. {current_room.locked_exits[direction]}")
+        elif verb == "misc":
+            if player.equipped_misc_items:
+                print("\n--- Miscellaneous Items ---")
+                for item in player.equipped_misc_items:
+                    print(f"  - {item['name']}")
+                print("---------------------------")
             else:
-                 print("You can't go that way.")
+                print("You have no miscellaneous items equipped.")
+            continue
+        # --- Movement ---
+        elif verb in ["go", "north", "south", "east", "west", "n", "s", "e", "w"]:
+            direction = verb
+            if verb == "go":
+                if len(parts) > 1:
+                    direction = parts[1]
+                else:
+                    print("Go where?")
+                    continue
+
+            if direction == 'n': direction = 'north'
+            if direction == 's': direction = 'south'
+            if direction == 'e': direction = 'east'
+            if direction == 'w': direction = 'west'
+
+            dx, dy = 0, 0
+            if direction == 'north': dy = -1
+            elif direction == 'south': dy = 1
+            elif direction == 'east': dx = 1
+            elif direction == 'west': dx = -1
+
+            new_x, new_y = player.x + dx, player.y + dy
+
+            # World boundary transition
+            if not (0 <= new_y < current_dungeon.height and 0 <= new_x < current_dungeon.width):
+                 print(f"You've reached the edge of this dungeon area and travel {direction}...")
+                 world.move_player(dx, dy)
+                 rooms_travelled += 1
+                 direction_history.append(direction)
+                 continue
+
+            # Dungeon grid movement
+            if current_dungeon.grid[new_y][new_x] == '.':
+                player.x, player.y = new_x, new_y
+                rooms_travelled += 1
+                direction_history.append(direction)
+            else:
+                print("You can't go that way.")
             continue
 
         # --- Item Interaction ---
@@ -2640,7 +2628,7 @@ def game_loop(player, world, sound_manager, seed=None):
             item_to_use_name = " ".join(parts[1:])
             item_to_use = next((item for item in player.inventory if item['name'].lower() == item_to_use_name.lower()), None)
             if item_to_use:
-                player.hp, player.max_hp, player.current_max_inventory_slots, _, _ = process_item_use(item_to_use, player.hp, player.max_hp, player.inventory, player.current_max_inventory_slots, in_combat=False)
+                process_item_use(player, item_to_use, in_combat=False)
             else:
                 print("You don't have that item.")
             continue
@@ -2686,21 +2674,32 @@ def game_loop(player, world, sound_manager, seed=None):
                     current_room.puzzle['solved'] = True
                     process_puzzle_rewards(current_room.puzzle, player, current_room)
                 else:
-                    print("That is not the correct answer.")
+                    print("That is not the correct answer. You feel a chill run down your spine.")
+                    player.hp -= 5
+                    print("You lose 5 HP.")
+                    if player.hp <= 0:
+                        return 'lose', monsters_defeated_this_run, rooms_travelled
             else:
                 print("There is no riddle to answer here.")
             continue
         elif verb == "pull":
-            # Simplified puzzle logic
-            if current_room.puzzle and not current_room.puzzle.get('solved', False):
-                print("You pull the lever. A grinding noise is heard.")
-                current_room.puzzle['solved'] = True
-                process_puzzle_rewards(current_room.puzzle, player, current_room)
+            if current_room and current_room.puzzle and current_room.puzzle['type'] == 'mechanism' and not current_room.puzzle.get('solved', False):
+                lever_color = " ".join(parts[1:])
+                if lever_color.lower() == current_room.puzzle['correct_lever'].lower():
+                    print("You pull the correct lever. A grinding noise is heard.")
+                    current_room.puzzle['solved'] = True
+                    process_puzzle_rewards(current_room.puzzle, player, current_room)
+                else:
+                    print("You pull the wrong lever. A trap is triggered!")
+                    player.hp -= 10
+                    print("You lose 10 HP.")
+                    if player.hp <= 0:
+                        return 'lose', monsters_defeated_this_run, rooms_travelled
             else:
                 print("There's nothing to pull.")
             continue
         elif verb == "press":
-            if current_room.puzzle and current_room.puzzle['type'] == 'pressure_plate' and not current_room.puzzle.get('solved', False):
+            if current_room and current_room.puzzle and current_room.puzzle['type'] == 'pressure_plate' and not current_room.puzzle.get('solved', False):
                 if current_room.item:
                     print(f"You press the {current_room.item['name']} onto the pressure plate.")
                     current_room.puzzle['solved'] = True
@@ -2711,18 +2710,119 @@ def game_loop(player, world, sound_manager, seed=None):
                 print("There's nothing to press here.")
             continue
         elif verb == "give":
-            # Simplified puzzle logic
-            if current_room.puzzle and not current_room.puzzle.get('solved', False):
-                print("You give the item. The puzzle seems to react.")
-                current_room.puzzle['solved'] = True
-                process_puzzle_rewards(current_room.puzzle, player, current_room)
+            if len(parts) < 4 or parts[2] != 'to':
+                print("Invalid command. Use: give [item] to [object]")
+                continue
+            item_name = parts[1]
+            object_name = " ".join(parts[3:])
+
+            if current_room and current_room.puzzle and current_room.puzzle['type'] == 'item_delivery' and not current_room.puzzle.get('solved', False):
+                if object_name.lower() == current_room.puzzle['target_object'].lower():
+                    item_to_give = next((item for item in player.inventory if item['name'].lower() == item_name.lower()), None)
+                    if item_to_give and item_to_give['name'].lower() == current_room.puzzle['required_item'].lower():
+                        print(f"You give the {item_to_give['name']} to the {object_name}. The puzzle is solved!")
+                        player.inventory.remove(item_to_give)
+                        current_room.puzzle['solved'] = True
+                        process_puzzle_rewards(current_room.puzzle, player, current_room)
+                    else:
+                        print("You don't have the correct item to give.")
+                else:
+                    print("You can't give an item to that.")
             else:
                 print("There's nothing to give an item to.")
+            continue
+        elif verb == "rest":
+            if current_room and getattr(current_room, 'is_inn', False):
+                 if player.hp < player.max_hp:
+                    player.hp = player.max_hp
+                    print("\nYou rest by the fire and feel fully restored.")
+                 else:
+                    print("\nYou are already at full health.")
+            else:
+                print("You can only rest at an inn.")
+            continue
+        elif verb == "unlock":
+            if len(parts) < 4 or parts[2] != 'with':
+                print("Invalid command. Use: unlock [direction] with [key name]")
+                continue
+
+            direction = parts[1]
+            key_name = " ".join(parts[3:])
+
+            if current_room and direction not in current_room.locked_exits:
+                print("There is nothing to unlock in that direction.")
+                continue
+
+            # Check if player has the key
+            key_item = next((key for key in player.keychain if key['name'].lower() == key_name.lower()), None)
+
+            if not key_item:
+                print(f"You don't have a '{key_name}'.")
+                continue
+
+            # Check if the key is the correct type for the lock
+            if current_room:
+                required_key_type = current_room.locked_exits[direction].get('key_type')
+                if required_key_type and key_item.get('key_type') == required_key_type:
+                    print(f"You use the {key_item['name']} to unlock the path to the {direction}!")
+                    del current_room.locked_exits[direction]
+                    current_room.exits[direction] = True # Add it to open exits
+                else:
+                    print(f"The {key_item['name']} doesn't seem to fit this lock.")
+            continue
+        elif verb == "search":
+            if current_room and current_room.hazard and not current_room.hazard.get('disarmed', False):
+                print(f"You search the room and find a {current_room.hazard['name']}!")
+            else:
+                print("You search the room, but find nothing unusual.")
+            continue
+        elif verb == "disarm":
+            if current_room and current_room.hazard and not current_room.hazard.get('disarmed', False):
+                print(f"You attempt to disarm the {current_room.hazard['name']}.")
+                if random.random() > 0.5:
+                    print("You successfully disarm the trap!")
+                    current_room.hazard['disarmed'] = True
+                else:
+                    print("You failed to disarm the trap!")
+                    player.hp -= current_room.hazard['damage']
+                    print(f"You take {current_room.hazard['damage']} damage.")
+                    if player.hp <= 0:
+                        return 'lose', monsters_defeated_this_run, rooms_travelled
+            else:
+                print("There are no traps to disarm.")
             continue
 
         # --- Crafting ---
         elif verb == "craft":
-            print("Crafting is not yet implemented in this version.")
+            if current_room and current_room.crafting_station:
+                print("You can craft items here. (Crafting logic not fully implemented).")
+            else:
+                print("You need to be at a crafting station to craft items.")
+            continue
+        elif verb == "enchant":
+            if current_room and current_room.crafting_station:
+                print("You can enchant items here. (Enchanting logic not fully implemented).")
+            else:
+                print("You need to be at a crafting station to enchant items.")
+            continue
+        elif verb == "combine":
+            if len(parts) < 2:
+                print("What do you want to combine? (e.g., 'combine healing potion')")
+                continue
+            item_to_combine_name = " ".join(parts[1:])
+            handle_combine(player, item_to_combine_name)
+            continue
+        elif verb == "craft":
+            if current_room and current_room.crafting_station:
+                print("You can craft items here. (Crafting logic not fully implemented).")
+            else:
+                print("You need to be at a crafting station to craft items.")
+            continue
+        elif verb == "enchant":
+            if current_room and current_room.crafting_station:
+                print("You can enchant items here. (Enchanting logic not fully implemented).")
+            else:
+                print("You need to be at a crafting station to enchant items.")
             continue
 
         # --- Easter Egg/Debug Commands ---
@@ -2741,12 +2841,15 @@ def game_loop(player, world, sound_manager, seed=None):
             continue
         elif verb == "ohitems":
             print("A treasure chest materializes out of thin air!")
-            for _ in range(3):
-                item_def = get_item_by_name(random.choice([item['name'] for item in ALL_ITEMS if item.get('type') not in ['winning_item', 'key']]))
+            for _ in range(5):
+                item_def = get_item_by_name(random.choice([item['name'] for item in ALL_ITEMS if item.get('type') != 'winning_item']))
                 if item_def:
                     if len(player.inventory) < player.current_max_inventory_slots:
                         player.inventory.append(copy.deepcopy(item_def))
                         print(f"You found {add_article(item_def['name'])}!")
+                    else:
+                        print("The chest is full of items, but your inventory is also full!")
+                        break
             continue
 
         else:
