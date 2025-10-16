@@ -851,54 +851,508 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
 
     if first_strike:
         print("Thanks to your Amulet of Swiftness, you get the first strike!")
-        # Player's turn
-        player_hp, monster_current_hp, player_gold, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
-            player_turn(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points, player_status_effects, monster_status_effects)
+        # This is a simplified version of the player's turn for the first strike
+        base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+        damage_dealt = max(0, base_damage - monster_defense)
+        monster_current_hp -= damage_dealt
+        print(f"You strike the {monster_name} for {damage_dealt} damage!")
+        if monster_current_hp <= 0:
+            print(f"You defeated the {monster_name} before it could even act!")
+            monster_data = None
 
     while player_hp > 0 and monster_current_hp > 0:
-        player_hp, monster_current_hp, player_gold, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points = \
-            player_turn(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points, player_status_effects, monster_status_effects)
-
-        if player_hp <= 0 or monster_current_hp <= 0:
-            break
-
-        monster_current_hp, is_monster_stunned = apply_and_tick_status_effects(monster_status_effects, monster_current_hp)
-        if is_monster_stunned:
-            print(f"The {monster_name} is stunned and cannot act!")
+        player_hp, is_player_stunned = apply_and_tick_status_effects(player_status_effects, player_hp)
+        if is_player_stunned:
+            print("You are stunned and cannot act!")
+            action_taken = True
         else:
-            monster_actual_damage = random.randint(monster_base_damage - monster_damage_variance, monster_base_damage + monster_damage_variance)
-            monster_is_crit = False
-            accuracy = 1.0
-            for effect in monster_status_effects:
-                if effect['name'] == 'Blindness':
-                    accuracy += effect['effect']['modifier']
+            print("\nWhat do you do? (attack / skill / heal / run / use [item name] / inventory / help)")
+            combat_command_input = input("Combat Action> ").lower().strip()
+            parts = combat_command_input.split()
 
-            if random.random() > accuracy:
-                print(f"The {monster_name} misses!")
-                monster_actual_damage = 0
-            elif random.random() < monster_crit_chance:
-                monster_actual_damage = int(monster_actual_damage * monster_crit_multiplier)
-                monster_is_crit = True
+            verb = "" # Initialize verb to an empty string
 
-            player_hp, monster_actual_damage, monster_current_hp = handle_item_effects("on_take_damage", player_hp, monster_actual_damage, monster_current_hp, [equipped_weapon, equipped_armor_value, equipped_cloak, equipped_helmet] + equipped_misc_items)
-
-            damage_after_defense = max(0, monster_actual_damage - total_player_defense)
-            player_hp -= damage_after_defense
-
-            if monster_is_crit:
-                print(f"The {monster_name} lands a **CRITICAL HIT** on you for {monster_actual_damage} damage! Your defense absorbed {monster_actual_damage - damage_after_defense} damage.")
+            # NEW: If input is empty, default to 'attack'
+            if not parts:
+                verb = "attack"
             else:
-                print(f"The {monster_name} retaliates, hitting you for {monster_actual_damage} damage! Your defense absorbed {monster_actual_damage - damage_after_defense} damage.")
+                verb = parts[0]
 
-            if 'status_effects' in monster_data:
-                for effect in monster_data['status_effects']:
-                    if random.random() < effect['chance']:
-                        player_status_effects.append(copy.deepcopy(effect))
-                        print(f"You are now {effect['name']}!")
+            action_taken = False
 
-            if player_hp <= 0:
-                print(f"The {monster_name} delivers a fatal blow...")
-                break
+            if verb == "attack":
+                if equipped_weapon and equipped_weapon.get('cursed') and equipped_weapon.get('curse_effect', {}).get('hp_drain'):
+                    drain_amount = equipped_weapon['curse_effect']['hp_drain']
+                    player_hp -= drain_amount
+                    print(f"Your {equipped_weapon['name']} drains {drain_amount} HP from you!")
+                    if player_hp <= 0:
+                        print("You have been drained of your life force!")
+                        break
+                base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+
+                is_crit = False
+                accuracy = 1.0
+                for effect in player_status_effects:
+                    if effect['name'] == 'Blindness':
+                        accuracy += effect['effect']['modifier']
+
+                if random.random() > accuracy:
+                    print("You miss!")
+                    damage_dealt = 0
+                elif random.random() < (player_crit_chance + current_crit_chance_bonus):
+                    damage_dealt = int(base_damage * player_crit_multiplier)
+                    is_crit = True
+                else:
+                    damage_dealt = base_damage
+
+                damage_dealt = max(0, damage_dealt - monster_defense)
+                monster_current_hp -= damage_dealt
+                if is_crit:
+                    print(f"You deliver a **CRITICAL HIT** to the {monster_name} for {damage_dealt} damage!")
+                else:
+                    print(f"You strike the {monster_name} for {damage_dealt} damage!")
+
+                if equipped_weapon and 'status_effects' in equipped_weapon:
+                    for effect in equipped_weapon['status_effects']:
+                        if random.random() < effect['chance']:
+                            monster_status_effects.append(copy.deepcopy(effect))
+                            print(f"The {monster_name} is now {effect['name']}!")
+
+                if equipped_weapon and equipped_weapon.get('enchantment'):
+                    enchantment_name = equipped_weapon['enchantment']
+                    enchantment = next((e for e in GAME_DATA.get('enchantments', []) if e['name'] == enchantment_name), None)
+                    if enchantment:
+                        if 'damage_boost' in enchantment['effect']:
+                            damage_dealt += enchantment['effect']['damage_boost']['value']
+                            print(f"Your weapon's {enchantment_name} enchantment deals an extra {enchantment['effect']['damage_boost']['value']} damage!")
+                        if 'status_effect' in enchantment['effect']:
+                            if random.random() < enchantment['effect']['status_effect']['chance']:
+                                monster_status_effects.append(copy.deepcopy(enchantment['effect']['status_effect']))
+                                print(f"The {monster_name} is now {enchantment['effect']['status_effect']['name']}!")
+
+                action_taken = True
+
+                if monster_current_hp <= 0:
+                    print(f"The {monster_name} collapses, defeated!")
+                    gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
+                    if equipped_helmet and equipped_helmet.get('cursed') and equipped_helmet.get('curse_effect', {}).get('gold_find'):
+                        gold_gained = int(gold_gained * equipped_helmet['curse_effect']['gold_find'])
+                        print(f"Your {equipped_helmet['name']} doubles the gold dropped!")
+                    print(f"You gained {gold_gained} gold from defeating the {monster_name}!")
+
+                    player_xp += monster_xp_reward
+                    print(f"You gained {monster_xp_reward} experience points!")
+
+                    item_drop_name = monster_data.get('item_drop')
+                    if item_drop_name:
+                        item_def = get_item_by_name(item_drop_name)
+                        if item_def:
+                            if len(player_inventory) < current_max_inventory_slots:
+                                scaled_item = scale_item_for_player_level(item_def, player_level)
+                                player_inventory.append(scaled_item)
+                                print(f"The monster dropped {add_article(scaled_item['name'])}! It has been added to your inventory.")
+                                # NEW: Quick equip prompt
+                                if scaled_item.get('type') in ['weapon', 'shield', 'armor', 'equipment']:
+                                    quick_equip_choice = input(f"Do you want to quick equip the {scaled_item['name']}? (yes/no): ").lower().strip()
+                                    if quick_equip_choice in ['yes', 'y']:
+                                        player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet = \
+                                            handle_equip_item(player_inventory[-1], player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level, equipped_helmet)
+                                        player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
+                                        print(f"Your attack power is now {player_attack_power}.")
+                            elif current_room.item is None:
+                                scaled_item = scale_item_for_player_level(item_def, player_level)
+                                current_room.item = scaled_item
+                                print(f"The monster dropped {add_article(scaled_item['name'])}, but your inventory is full! It has been placed on the floor.")
+                            else:
+                                print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full and there's already an item on the floor! The dropped item is lost.")
+                        else:
+                            if DEBUG:
+                                debug.debug_print(f"Monster drop item '{item_drop_name}' not found in game data.")
+
+                    if random.random() < 0.1:
+                        crafting_materials = [item for item in ALL_ITEMS if item.get('type') == 'crafting_material']
+                        if crafting_materials:
+                            material_to_drop = random.choice(crafting_materials)
+                            if len(player_inventory) < current_max_inventory_slots:
+                                player_inventory.append(copy.deepcopy(material_to_drop))
+                                print(f"The monster dropped a {material_to_drop['name']}!")
+                            else:
+                                print(f"The monster dropped a {material_to_drop['name']}, but your inventory is full!")
+
+                    for q_id, q_data in player_quests.items():
+                        quest_def = get_quest_by_id(q_id)
+                        if quest_def and q_data['status'] == 'active':
+                            if (quest_def['type'] == 'defeat_any_monster') or \
+                               (quest_def['type'] == 'defeat_monster' and quest_def['target_monster'].lower() == monster_name.lower()):
+                                if q_data['current_count'] < quest_def['target_count']:
+                                    q_data['current_count'] += 1
+                                    print(f"Quest Update: Defeated a monster! ({q_data['current_count']}/{quest_def['target_count']}) for '{quest_def['name']}'")
+                                    if q_data['current_count'] >= quest_def['target_count']:
+                                        print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
+
+                    player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+                        check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
+
+                    monster_data = None
+                    break
+            elif verb == "skill":
+                if not player_unlocked_skills:
+                    print("You have not unlocked any skills yet.")
+                    continue
+
+                print("\nAvailable skills:")
+                for skill_name in player_unlocked_skills:
+                    print(f"  - {skill_name}")
+
+                skill_choice = input("Enter the name of the skill you want to use, or 'back': ").strip()
+                if skill_choice.lower() == 'back':
+                    continue
+
+                chosen_skill = None
+                for skill_name in player_unlocked_skills:
+                    if skill_name.lower() == skill_choice.lower():
+                        character_classes = GAME_DATA.get('character_classes', {})
+                        class_data = character_classes.get(player_class)
+                        for skill_data in class_data['skill_tree']:
+                            if skill_data['name'] == skill_name:
+                                chosen_skill = skill_data
+                                break
+                        break
+
+                if chosen_skill:
+                    effect = chosen_skill['effect']
+                    if effect['type'] == 'damage_boost':
+                        base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+                        damage_dealt = int(base_damage * effect['value'])
+                        damage_dealt = max(0, damage_dealt - monster_defense)
+                        monster_current_hp -= damage_dealt
+                        print(f"You use {chosen_skill['name']} and deal {damage_dealt} damage!")
+                    elif effect['type'] == 'guaranteed_crit':
+                        base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+                        damage_dealt = int(base_damage * player_crit_multiplier)
+                        damage_dealt = max(0, damage_dealt - monster_defense)
+                        monster_current_hp -= damage_dealt
+                        print(f"You use {chosen_skill['name']} for a guaranteed critical hit, dealing {damage_dealt} damage!")
+                    elif effect['type'] == 'aoe_damage':
+                        damage_dealt = effect['damage']
+                        damage_dealt = max(0, damage_dealt - monster_defense)
+                        monster_current_hp -= damage_dealt
+                        print(f"You use {chosen_skill['name']} and deal {damage_dealt} damage to all enemies!")
+                    elif effect['type'] == 'heal':
+                        healing_amount = effect['value']
+                        player_hp = min(max_hp, player_hp + healing_amount)
+                        print(f"You use {chosen_skill['name']} and heal for {healing_amount} HP.")
+                    elif effect['type'] == 'stun':
+                        if random.random() < effect['chance']:
+                            monster_status_effects.append({"name": "Stun", "type": "control", "duration": 2}) # 2 turns because it ticks down once immediately
+                            print(f"You use {chosen_skill['name']} and stun the {monster_name}!")
+                        else:
+                            print(f"You use {chosen_skill['name']}, but it fails to stun the {monster_name}.")
+                    elif effect['type'] == 'poison':
+                        monster_status_effects.append({"name": "Poison", "type": "dot", "damage": effect['damage'], "duration": effect['duration'] + 1, "message_tick": "The monster takes {damage} from poison.", "message_wear_off": "The monster is no longer poisoned."})
+                        print(f"You use {chosen_skill['name']} and poison the {monster_name}!")
+                    elif effect['type'] == 'freeze':
+                        if random.random() < effect['chance']:
+                            monster_status_effects.append({"name": "Stun", "type": "control", "duration": 2})
+                            print(f"You use {chosen_skill['name']} and freeze the {monster_name} in place!")
+                        else:
+                            print(f"You use {chosen_skill['name']}, but the {monster_name} resists the freeze.")
+                    elif effect['type'] == 'stat_buff':
+                        player_effects.append({"stat": effect['stat'], "modifier": effect['value'], "duration": effect['duration'] + 1, "message": f"You feel the power of {chosen_skill['name']}!"})
+                        print(f"You use {chosen_skill['name']} and feel stronger!")
+                    elif effect['type'] == 'damage_modifier':
+                        undead_monsters = ["skeletal warrior", "feral ghoul", "vampire spawn", "lich's apprentice", "ghostly apparition", "specter of despair", "minotaur skeleton"]
+                        base_damage = random.randint(player_attack_power - player_attack_variance, player_attack_power + player_attack_variance)
+                        damage_dealt = base_damage
+                        if monster_name.lower() in [m.lower() for m in undead_monsters]:
+                            damage_dealt = int(base_damage * effect['multiplier'])
+                            print("Your divine power smites the undead creature!")
+                        damage_dealt = max(0, damage_dealt - monster_defense)
+                        monster_current_hp -= damage_dealt
+                        print(f"You use {chosen_skill['name']} and deal {damage_dealt} damage!")
+                    elif effect['type'] == 'shield':
+                        player_effects.append({"stat": "defense", "modifier": effect['value'], "duration": 1, "message": "An arcane shield surrounds you."})
+                        print(f"You summon an Arcane Shield that will absorb up to {effect['value']} damage.")
+                    elif effect['type'] == 'dodge_buff':
+                        player_effects.append({"stat": "dodge_chance", "modifier": effect['value'], "duration": effect['duration'] + 1, "message": "You feel nimble and evasive."})
+                        print(f"You use {chosen_skill['name']} and feel much harder to hit.")
+                    action_taken = True
+                else:
+                    print("Invalid skill name.")
+                    continue
+
+                if monster_current_hp <= 0:
+                    print(f"The {monster_name} collapses, defeated!")
+                    gold_gained = random.randint(gold_drop_range[0], gold_drop_range[1])
+                    if equipped_helmet and equipped_helmet.get('cursed') and equipped_helmet.get('curse_effect', {}).get('gold_find'):
+                        gold_gained = int(gold_gained * equipped_helmet['curse_effect']['gold_find'])
+                        print(f"Your {equipped_helmet['name']} doubles the gold dropped!")
+                    print(f"You gained {gold_gained} gold from defeating the {monster_name}!")
+
+                    player_xp += monster_xp_reward
+                    print(f"You gained {monster_xp_reward} experience points!")
+
+                    item_drop_name = monster_data.get('item_drop')
+                    if item_drop_name:
+                        item_def = get_item_by_name(item_drop_name)
+                        if item_def:
+                            if len(player_inventory) < current_max_inventory_slots:
+                                scaled_item = scale_item_for_player_level(item_def, player_level)
+                                player_inventory.append(scaled_item)
+                                print(f"The monster dropped {add_article(scaled_item['name'])}! It has been added to your inventory.")
+                                # NEW: Quick equip prompt
+                                if scaled_item.get('type') in ['weapon', 'shield', 'armor', 'equipment']:
+                                    quick_equip_choice = input(f"Do you want to quick equip the {scaled_item['name']}? (yes/no): ").lower().strip()
+                                    if quick_equip_choice in ['yes', 'y']:
+                                        player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, equipped_helmet = \
+                                            handle_equip_item(player_inventory[-1], player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_level, equipped_helmet)
+                                        player_attack_power = recalculate_attack_power(player_level, equipped_weapon, equipped_misc_items, player_attack_bonus)
+                                        print(f"Your attack power is now {player_attack_power}.")
+                            elif current_room.item is None:
+                                scaled_item = scale_item_for_player_level(item_def, player_level)
+                                current_room.item = scaled_item
+                                print(f"The monster dropped {add_article(scaled_item['name'])}, but your inventory is full! It has been placed on the floor.")
+                            else:
+                                print(f"The monster dropped {add_article(item_def['name'])}, but your inventory is full and there's already an item on the floor! The dropped item is lost.")
+                        else:
+                            if DEBUG:
+                                debug.debug_print(f"Monster drop item '{item_drop_name}' not found in game data.")
+
+                    if random.random() < 0.1:
+                        crafting_materials = [item for item in ALL_ITEMS if item.get('type') == 'crafting_material']
+                        if crafting_materials:
+                            material_to_drop = random.choice(crafting_materials)
+                            if len(player_inventory) < current_max_inventory_slots:
+                                player_inventory.append(copy.deepcopy(material_to_drop))
+                                print(f"The monster dropped a {material_to_drop['name']}!")
+                            else:
+                                print(f"The monster dropped a {material_to_drop['name']}, but your inventory is full!")
+
+                    for q_id, q_data in player_quests.items():
+                        quest_def = get_quest_by_id(q_id)
+                        if quest_def and q_data['status'] == 'active':
+                            if (quest_def['type'] == 'defeat_any_monster') or \
+                               (quest_def['type'] == 'defeat_monster' and quest_def['target_monster'].lower() == monster_name.lower()):
+                                if q_data['current_count'] < quest_def['target_count']:
+                                    q_data['current_count'] += 1
+                                    print(f"Quest Update: Defeated a monster! ({q_data['current_count']}/{quest_def['target_count']}) for '{quest_def['name']}'")
+                                    if q_data['current_count'] >= quest_def['target_count']:
+                                        print(f"QUEST COMPLETE: '{quest_def['name']}'! Return to {quest_def['giver_npc_name']} to claim your reward!")
+
+                    player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points = \
+                        check_for_level_up(player_xp, player_level, xp_to_next_level, player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_skill_points)
+
+                    monster_data = None
+                    break
+
+            elif verb == "heal":
+                # Find the best healing item in the inventory
+                best_healing_item = None
+                max_heal = 0
+                for item in player_inventory:
+                    if item.get('type') == 'consumable' and item.get('effect_type') == 'heal':
+                        heal_amount = item.get('effect_value', 0)
+                        if heal_amount > max_heal:
+                            max_heal = heal_amount
+                            best_healing_item = item
+
+                if best_healing_item:
+                    original_player_hp = player_hp
+                    player_hp, max_hp, current_max_inventory_slots, consumed_turn, _ = process_item_use(best_healing_item, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
+                    action_taken = consumed_turn
+
+                    if player_hp <= 0:
+                        print(f"You succumb to the effects of {add_article(best_healing_item['name'])}...")
+                        break
+
+                    if consumed_turn and player_hp != original_player_hp:
+                        print(f"Your health is now {player_hp}/{max_hp} HP.")
+
+                else:
+                    print("You don't have any healing items.")
+                    continue
+            elif verb == "run":
+                run_chance = random.random()
+                if run_chance > 0.5:
+                    print("You manage to escape the fight!")
+                    monster_data = None
+                    break
+                else:
+                    print("You try to run, but the monster blocks your path!")
+                    action_taken = True
+
+            elif verb == "use":
+                if len(parts) < 2:
+                    print("What do you want to use? (e.g., 'use healing potion')")
+                    continue
+
+                item_to_use_name_input = " ".join(parts[1:])
+                item_found_in_inventory = None
+                for item_dict in player_inventory:
+                    if item_dict['name'].lower() == item_to_use_name_input:
+                        item_found_in_inventory = item_dict
+                        break
+
+                if item_found_in_inventory:
+                    original_player_hp = player_hp
+                    player_hp, max_hp, current_max_inventory_slots, consumed_turn, stat_changes = process_item_use(item_found_in_inventory, player_hp, max_hp, player_inventory, current_max_inventory_slots, in_combat=True)
+                    action_taken = consumed_turn
+                    if 'remove_effect' in stat_changes:
+                        effect_to_remove = stat_changes['remove_effect']
+                        player_status_effects = [effect for effect in player_status_effects if effect['name'] != effect_to_remove]
+                        print(f"The {effect_to_remove} has been cured.")
+                    if 'add_effect_to_monster' in stat_changes:
+                        effect_to_add = stat_changes['add_effect_to_monster']
+                        monster_status_effects.append(effect_to_add)
+                        print(f"The {monster_name} is now {effect_to_add['name']}!")
+
+                    if player_hp <= 0:
+                        print(f"You succumb to the effects of {add_article(item_found_in_inventory['name'])}...")
+                        break
+
+                    if consumed_turn and player_hp != original_player_hp:
+                        print(f"Your health is now {player_hp}/{max_hp} HP.")
+
+                else:
+                    print(f"You don't have {item_to_use_name_input} in your inventory.")
+
+            elif verb.startswith("inv"): # Changed to use .startswith
+                # Use debug function for inventory data, but keep regular print for user-facing output
+                if DEBUG: # Wrapped debug calls
+                    debug.debug_player_data(player_inventory, player_keychain, current_max_inventory_slots, player_gold, "Inventory Check")
+
+                if not player_inventory and not player_keychain: # Check keychain too
+                    print("Your inventory is empty.")
+                else:
+                    print(f"Your Health: {player_hp}/{max_hp} HP.")
+                    print(f"Your Level: {player_level} (XP: {player_xp}/{xp_to_next_level})")
+
+                    # Display regular inventory
+                    print(f"You are carrying ({len(player_inventory)}/{current_max_inventory_slots}):")
+                    if player_inventory:
+                        for item_dict in player_inventory:
+                            display_str = f"    - {add_article(item_dict['name'])}"
+                            item_type = item_dict.get('type')
+                            if item_type == 'consumable':
+                                effect_type = item_dict.get('effect_type')
+                                effect_value = item_dict.get('effect_value')
+                                if effect_type == 'heal' and isinstance(effect_value, int):
+                                    display_str += f" (Heals {effect_value} HP)"
+                                elif effect_type == 'harm' and isinstance(effect_value, int):
+                                    display_str += f" (Harms {effect_value} HP)"
+                                elif effect_type == 'wake_up':
+                                    display_str += " (Stimulant)"
+                                elif effect_type == 'flavor':
+                                    display_str += " (Consumable)"
+                                elif effect_type == 'cure':
+                                    display_str += f" (Cures {item_dict.get('effect_value')})"
+                                elif effect_type == 'inflict':
+                                    display_str += f" (Inflicts {item_dict.get('effect_value')})"
+                            elif item_type == 'weapon':
+                                display_str += f" (Damage: {item_dict.get('damage', '?')})"
+                                if equipped_weapon and equipped_weapon['name'].lower() == item_dict['name'].lower():
+                                    display_str += " (EQUIPPED)"
+                            elif item_type == 'armor':
+                                # MODIFIED: Check if it's armor or cloak
+                                item_subtype = item_dict.get('subtype')
+                                if item_subtype == 'body_armor':
+                                    display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                                    if equipped_armor_value and equipped_armor_value['name'].lower() == item_dict['name'].lower():
+                                        display_str += " (EQUIPPED)"
+                                elif item_subtype == 'cloak':
+                                    display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                                    if equipped_cloak and equipped_cloak['name'].lower() == item_dict['name'].lower():
+                                        display_str += " (EQUIPPED)"
+                                else: # fallback for generic 'armor' type without subtype
+                                    display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                                    if equipped_armor_value and equipped_armor_value['name'].lower() == item_dict['name'].lower():
+                                        display_str += " (EQUIPPED)"
+                            elif item_type == 'backpack':
+                                display_str += f" (+{item_dict.get('effect_value', '?')} Slots)"
+                            elif item_type == 'shield':
+                                display_str += f" (Defense: {item_dict.get('defense', '?')})"
+                                # FIXED: Compare by name for equipped status
+                                if player_shield_value and player_shield_value['name'].lower() == item_dict['name'].lower():
+                                    display_str += " (EQUIPPED)"
+                            elif item_type == 'winning_item':
+                                display_str += " (Legendary Artifact!)"
+                            elif item_type == 'equipment':
+                                display_str += f" (Effect: {item_dict.get('effect_type', 'unknown')})"
+                                if item_dict in equipped_misc_items:
+                                    display_str += " (EQUIPPED)"
+                            elif item_dict.get('description'):
+                                display_str += f" ({item_dict['description']})"
+                            print(display_str)
+                    else:
+                        print("    (Empty)")
+
+                    # Display keychain
+                    print("Your Keychain:")
+                    if player_keychain:
+                        for item_dict in player_keychain:
+                            print(f"    - {add_article(item_dict['name'])} (Type: {item_dict.get('key_type', '?')} key)")
+                    else:
+                        print("    (Empty)")
+
+                    print(f"Your Gold: {player_gold}")
+                    print(f"Current Shield Defense: {player_shield_value.get('defense', 0) if player_shield_value else 0}") # Display value from item dict
+                    print(f"Current Armor Defense: {equipped_armor_value.get('defense', 0) if equipped_armor_value else 0}") # Display value from item dict
+                    # MODIFIED: Display cloak defense
+                    print(f"Current Cloak Defense: {equipped_cloak.get('defense', 0) if equipped_cloak else 0}")
+                    # MODIFIED: Update total defense calculation in display
+                    print(f"Total Defense: {calculate_total_defense(player_shield_value, equipped_armor_value, equipped_cloak, equipped_helmet)}")
+                    print(f"Attack Power: {player_attack_power} (+/-{player_attack_variance})")
+                    print(f"Critical Chance: {player_crit_chance*100:.0f}% (x{player_crit_multiplier:.1f} Damage)")
+                    if equipped_weapon:
+                        print(f"Equipped Weapon: {equipped_weapon['name']} (Damage: {equipped_weapon.get('damage', '?')})")
+                    else:
+                        print("Equipped Weapon: Fists (Damage: 5)")
+                    continue
+
+        # Monster's turn
+        if monster_current_hp > 0:
+            if action_taken:
+                monster_current_hp, is_monster_stunned = apply_and_tick_status_effects(monster_status_effects, monster_current_hp)
+                if is_monster_stunned:
+                    print(f"The {monster_name} is stunned and cannot act!")
+                else:
+                    monster_actual_damage = random.randint(monster_base_damage - monster_damage_variance, monster_base_damage + monster_damage_variance)
+                    monster_is_crit = False
+                    accuracy = 1.0
+                    for effect in monster_status_effects:
+                        if effect['name'] == 'Blindness':
+                            accuracy += effect['effect']['modifier']
+
+                    if random.random() > accuracy:
+                        print(f"The {monster_name} misses!")
+                        monster_actual_damage = 0
+                    elif random.random() < monster_crit_chance:
+                        monster_actual_damage = int(monster_actual_damage * monster_crit_multiplier)
+                        monster_is_crit = True
+
+                    player_hp, monster_actual_damage, monster_current_hp = handle_item_effects("on_take_damage", player_hp, monster_actual_damage, monster_current_hp, [equipped_weapon, equipped_armor_value, equipped_cloak, equipped_helmet] + equipped_misc_items)
+
+                    damage_after_defense = max(0, monster_actual_damage - total_player_defense)
+                    player_hp -= damage_after_defense
+
+                    if monster_is_crit:
+                        print(f"The {monster_name} lands a **CRITICAL HIT** on you for {monster_actual_damage} damage! Your defense absorbed {monster_actual_damage - damage_after_defense} damage.")
+                    else:
+                        print(f"The {monster_name} retaliates, hitting you for {monster_actual_damage} damage! Your defense absorbed {monster_actual_damage - damage_after_defense} damage.")
+
+                    if 'status_effects' in monster_data:
+                        for effect in monster_data['status_effects']:
+                            if random.random() < effect['chance']:
+                                player_status_effects.append(copy.deepcopy(effect))
+                                print(f"You are now {effect['name']}!")
+
+                    if player_hp <= 0:
+                        print(f"The {monster_name} delivers a fatal blow...")
+                        break
+            else:
+                # This else block handles cases where the player command didn't consume a turn (e.g., 'inv' or 'help')
+                # We simply continue to the next player input without the monster taking a turn.
+                continue
 
         if player_hp > 0 and monster_current_hp > 0:
             print(f"Your HP: {player_hp}/{max_hp} | {monster_name} HP: {monster_current_hp}")
@@ -911,21 +1365,6 @@ def handle_combat(player_hp, max_hp, player_attack_power, player_attack_bonus, p
     sound_manager.play_music('ambient_music')
     # MODIFIED: Added equipped_cloak, equipped_misc_items, and player_attack_bonus to returned values
     return player_hp, max_hp, monster_data, gold_gained, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_bonus, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points
-
-def player_turn(player_hp, max_hp, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, monster_data, player_shield_value, equipped_armor_value, equipped_cloak, player_inventory, current_max_inventory_slots, player_gold, equipped_weapon, player_xp, player_level, xp_to_next_level, player_quests, player_keychain, current_room, equipped_misc_items, player_effects, sound_manager, current_defense_bonus, current_crit_chance_bonus, equipped_helmet, player_class, player_unlocked_skills, player_skill_points, player_status_effects, monster_status_effects):
-    print("\nWhat do you do? (attack / skill / heal / run / use [item name] / inventory / help)")
-    combat_command_input = input("Combat Action> ").lower().strip()
-    parts = combat_command_input.split()
-    verb = ""
-    if not parts:
-        verb = "attack"
-    else:
-        verb = parts[0]
-    action_taken = False
-    if verb == "attack":
-        # ... (rest of the player turn logic)
-        pass
-    return player_hp, monster_data['health'], player_gold, player_xp, player_level, xp_to_next_level, player_quests, player_attack_power, player_attack_power, player_attack_variance, player_crit_chance, player_crit_multiplier, player_shield_value, equipped_armor_value, equipped_cloak, equipped_weapon, equipped_misc_items, player_skill_points
 
 def handle_gambler(player_gold, gambler_data):
     """
